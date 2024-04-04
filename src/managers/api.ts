@@ -11,9 +11,8 @@ export class APIManager {
 	}
 
 	async request<T>(path: string, options: APIRequestInit = {}) {
-		const params = new URLSearchParams(options.params).toString();
+		const { init, params } = this.parseOptions(options);
 		const url = new URL(`${path}?${params}`, this.baseUrl);
-		const init = this.parseOptions(options);
 
 		const response = await fetch(url, init);
 		const data: APIPayload<T> = await response.json();
@@ -25,6 +24,15 @@ export class APIManager {
 	}
 
 	private parseOptions(options: APIRequestInit) {
+		const paramsObject =
+			options.params &&
+			Object.fromEntries(
+				Object.entries(options.params)
+					.filter(([, value]) => Boolean(value))
+					.map(([key, value]) => [key, String(value)]),
+			);
+		const params = new URLSearchParams(paramsObject).toString();
+
 		const { method, headers, body, ...rest } = options;
 		const init: RequestInit = {
 			method: method || "GET",
@@ -36,6 +44,6 @@ export class APIManager {
 			init.body = body instanceof FormData ? body : JSON.stringify(body);
 		}
 
-		return init;
+		return { init, params };
 	}
 }
