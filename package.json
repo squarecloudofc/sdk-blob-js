@@ -1,39 +1,43 @@
 {
-  "name": "@squarecloud/blob",
-  "private": false,
-  "version": "0.0.1",
-  "description": "Official Square Cloud Blob SDK for NodeJS",
-  "main": "lib/index.js",
-  "types": "lib/index.d.ts",
-  "module": "lib/index.mjs",
-  "scripts": {},
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "devDependencies": {
-    "husky": "^9.0.11"
-  },
-  "keywords": [
-    "squarecloud",
-    "square",
-    "cloud",
-    "sdk",
-    "blob",
-    "api",
-    "storage",
-    "s3"
-  ],
-  "author": {
-    "name": "joaotonaco",
-    "url": "https://github.com/joaotonaco"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/squarecloudofc/sdk-blob-js.git"
-  },
-  "bugs": {
-    "url": "https://github.com/squarecloudofc/sdk-blob-js/issues"
-  },
-  "homepage": "https://github.com/squarecloudofc/sdk-blob-js#readme",
-  "license": "MIT"
+	"name": "@squarecloud/blob",
+	"private": false,
+	"version": "0.0.1",
+	"description": "Official Square Cloud Blob SDK for NodeJS",
+	"main": "lib/index.js",
+	"types": "lib/index.d.ts",
+	"module": "lib/index.mjs",
+	"scripts": {
+		"build:lint": "biome check .",
+		"lint": "biome check --apply ."
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^1.6.4",
+		"husky": "^9.0.11"
+	},
+	"keywords": [
+		"squarecloud",
+		"square",
+		"cloud",
+		"sdk",
+		"blob",
+		"api",
+		"storage",
+		"s3"
+	],
+	"author": {
+		"name": "joaotonaco",
+		"url": "https://github.com/joaotonaco"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/squarecloudofc/sdk-blob-js.git"
+	},
+	"bugs": {
+		"url": "https://github.com/squarecloudofc/sdk-blob-js/issues"
+	},
+	"homepage": "https://github.com/squarecloudofc/sdk-blob-js#readme",
+	"license": "MIT"
 }
