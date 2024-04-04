@@ -1,4 +1,5 @@
 import { SquareCloudBlob } from "..";
+import { SquareCloudBlobError } from "../structures/error";
 import type { APIPayload, APIRequestInit } from "../types/api";
 
 export class APIManager {
@@ -9,16 +10,18 @@ export class APIManager {
 		this.baseUrl = `${baseUrl}/${version}/`;
 	}
 
-	async request<T>(
-		path: string,
-		options: APIRequestInit = {},
-	): Promise<APIPayload<T>> {
+	async request<T>(path: string, options: APIRequestInit = {}) {
 		const params = new URLSearchParams(options.params).toString();
 		const url = new URL(`${path}?${params}`, this.baseUrl);
 		const init = this.parseOptions(options);
 
 		const response = await fetch(url, init);
-		return response.json();
+		const data: APIPayload<T> = await response.json();
+
+		if (data.status === "error") {
+			throw new SquareCloudBlobError(data.code || "UNKNOWN_ERROR");
+		}
+		return data;
 	}
 
 	private parseOptions(options: APIRequestInit) {
