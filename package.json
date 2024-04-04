@@ -7,9 +7,10 @@
 	"types": "lib/index.d.ts",
 	"module": "lib/index.mjs",
 	"scripts": {
+		"release": "npm run build && changeset publish",
+		"build": "run-s build:*",
 		"build:lint": "biome check .",
 		"build:ts": "tsup ./src",
-		"build": "run-s build:*",
 		"lint": "biome check --apply ."
 	},
 	"engines": {
@@ -17,8 +18,10 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.6.4",
+		"@changesets/cli": "^2.27.1",
 		"@types/node": "^20.12.4",
 		"husky": "^9.0.11",
+		"npm-run-all": "^4.1.5",
 		"ts-node": "^10.9.2",
 		"ts-node-dev": "^2.0.0",
 		"tsup": "^8.0.2",
