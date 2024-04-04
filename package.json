@@ -11,7 +11,9 @@
 		"build": "run-s build:*",
 		"build:lint": "biome check .",
 		"build:ts": "tsup ./src",
-		"lint": "biome check --apply ."
+		"lint": "biome check --apply .",
+		"test": "tsnd ./test/index.ts",
+		"prepare": "husky"
 	},
 	"engines": {
 		"node": ">=18.0.0"
