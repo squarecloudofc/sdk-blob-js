@@ -4,7 +4,12 @@
   "version": "0.0.1",
   "description": "Official Square Cloud Blob SDK for NodeJS",
   "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "module": "lib/index.mjs",
   "scripts": {},
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "keywords": [
     "squarecloud",
     "square",
