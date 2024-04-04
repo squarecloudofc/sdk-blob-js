@@ -18,3 +18,10 @@ export class SquareCloudBlobError extends Error {
 		return `${code}${message}`;
 	}
 }
+
+export class SquareCloudValidationError extends SquareCloudBlobError {
+	constructor(...args: ConstructorParameters<typeof SquareCloudBlobError>) {
+		super(...args);
+		this.name = SquareCloudValidationError.name;
+	}
+}
