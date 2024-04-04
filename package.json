@@ -1,0 +1,31 @@
+{
+  "name": "@squarecloud/blob",
+  "private": false,
+  "version": "0.0.1",
+  "description": "Official Square Cloud Blob SDK for NodeJS",
+  "main": "lib/index.js",
+  "scripts": {},
+  "keywords": [
+    "squarecloud",
+    "square",
+    "cloud",
+    "sdk",
+    "blob",
+    "api",
+    "storage",
+    "s3"
+  ],
+  "author": {
+    "name": "joaotonaco",
+    "url": "https://github.com/joaotonaco"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/squarecloudofc/sdk-blob-js.git"
+  },
+  "bugs": {
+    "url": "https://github.com/squarecloudofc/sdk-blob-js/issues"
+  },
+  "homepage": "https://github.com/squarecloudofc/sdk-blob-js#readme",
+  "license": "MIT"
+}
