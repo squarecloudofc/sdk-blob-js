@@ -28,7 +28,7 @@ pnpm add @squarecloud/blob
 
 ## Documentation
 
-Visit our [official API documentation](https://docs.squarecloud.app/blob-reference/) for more information about how this service.
+Visit our [official API documentation](https://docs.squarecloud.app/blob-reference/) for more information about this service.
 
 ## Getting Started
 
