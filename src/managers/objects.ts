@@ -17,7 +17,7 @@ export class BlobObjectsManager {
 
 		const { response } = await this.client.api.request<PutObjectResponse>(
 			"put",
-			{ method: "POST", body: formData, params: payload.params },
+			{ method: "PUT", body: formData, params: payload.params },
 		);
 
 		return assertPutObjectResponse(response);
