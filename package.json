@@ -1,7 +1,7 @@
 {
 	"name": "@squarecloud/blob",
 	"private": false,
-	"version": "0.0.1",
+	"version": "0.1.0",
 	"description": "Official Square Cloud Blob SDK for NodeJS",
 	"main": "lib/index.js",
 	"types": "lib/index.d.ts",
