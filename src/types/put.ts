@@ -1,8 +1,5 @@
 import type { z } from "zod";
-import type {
-	putBlobObjectResponseSchema,
-	putBlobObjectSchema,
-} from "../schemas/put";
+import type { putObjectResponseSchema, putObjectSchema } from "../schemas/put";
 
-export type PutBlobObjectType = z.infer<typeof putBlobObjectSchema>;
-export type PutBlobObjectResponse = z.infer<typeof putBlobObjectResponseSchema>;
+export type PutObjectType = z.infer<typeof putObjectSchema>;
+export type PutObjectResponse = z.infer<typeof putObjectResponseSchema>;

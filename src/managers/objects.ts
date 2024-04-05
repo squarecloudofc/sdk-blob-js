@@ -1,30 +1,26 @@
 import { readFile } from "fs/promises";
 import type { SquareCloudBlob } from "..";
-import { assertPutBlobObjectResponse } from "../assertions/put";
-import { putBlobObjectPayloadSchema } from "../schemas/put";
+import { assertPutObjectResponse } from "../assertions/put";
+import { putObjectPayloadSchema } from "../schemas/put";
 import { SquareCloudBlobError } from "../structures/error";
-import type { PutBlobObjectResponse, PutBlobObjectType } from "../types/put";
+import type { PutObjectResponse, PutObjectType } from "../types/put";
 
 export class BlobObjectsManager {
 	constructor(private readonly client: SquareCloudBlob) {}
 
-	async put(object: PutBlobObjectType) {
-		const payload = putBlobObjectPayloadSchema.parse(object);
+	async put(object: PutObjectType) {
+		const payload = putObjectPayloadSchema.parse(object);
 		const file = await this.parseFile(payload.file);
 
 		const formData = new FormData();
 		formData.append("file", new Blob([file]));
 
-		const { response } = await this.client.api.request<PutBlobObjectResponse>(
-			"blob/put",
-			{
-				method: "POST",
-				body: formData,
-				params: payload.params,
-			},
+		const { response } = await this.client.api.request<PutObjectResponse>(
+			"put",
+			{ method: "POST", body: formData, params: payload.params },
 		);
 
-		return assertPutBlobObjectResponse(response);
+		return assertPutObjectResponse(response);
 	}
 
 	private async parseFile(file: string | Buffer) {

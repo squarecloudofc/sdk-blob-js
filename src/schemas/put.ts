@@ -1,13 +1,13 @@
 import { z } from "zod";
-import { nameLikeStringSchema } from "./common";
+import { nameLikeSchema } from "./common";
 
-export const putBlobObjectSchema = z.object({
+export const putObjectSchema = z.object({
 	/** A string representing the name for the file. */
-	name: nameLikeStringSchema,
+	name: nameLikeSchema,
 	/** Use absolute path or Buffer, can be a single file or compressed (zip) */
 	file: z.string().or(z.instanceof(Buffer)),
 	/** A string representing the prefix for the file. */
-	prefix: nameLikeStringSchema.optional(),
+	prefix: nameLikeSchema.optional(),
 	/** A number indicating the expiration period of the file, ranging from 1 to 365 days. */
 	expire: z.number().min(1).max(365).optional(),
 	/** Set to true if a security hash is required. */
@@ -16,7 +16,7 @@ export const putBlobObjectSchema = z.object({
 	autoDownload: z.boolean().optional(),
 });
 
-export const putBlobObjectPayloadSchema = putBlobObjectSchema.transform(
+export const putObjectPayloadSchema = putObjectSchema.transform(
 	({ file, securityHash, autoDownload, ...rest }) => ({
 		file,
 		params: {
@@ -27,7 +27,7 @@ export const putBlobObjectPayloadSchema = putBlobObjectSchema.transform(
 	}),
 );
 
-export const putBlobObjectResponseSchema = z.object({
+export const putObjectResponseSchema = z.object({
 	/** The URL of the uploaded file. (File distributed in Square Cloud CDN) */
 	url: z.string(),
 });

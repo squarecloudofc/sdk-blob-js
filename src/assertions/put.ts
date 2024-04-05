@@ -1,12 +1,10 @@
-import { putBlobObjectResponseSchema } from "../schemas/put";
-import type { PutBlobObjectResponse } from "../types/put";
+import { putObjectResponseSchema } from "../schemas/put";
+import type { PutObjectResponse } from "../types/put";
 import { handleAPIObjectAssertion } from "./handlers";
 
-export function assertPutBlobObjectResponse(
-	value: unknown,
-): PutBlobObjectResponse {
+export function assertPutObjectResponse(value: unknown): PutObjectResponse {
 	return handleAPIObjectAssertion({
-		schema: putBlobObjectResponseSchema,
+		schema: putObjectResponseSchema,
 		code: "PUT_OBJECT",
 		route: "/put",
 		value,
