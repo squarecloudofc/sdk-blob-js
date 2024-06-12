@@ -40,7 +40,7 @@ export class BlobObjectsManager {
 		const file = await this.parseFile(payload.file);
 
 		const formData = new FormData();
-		formData.append("file", new Blob([file]));
+		formData.append("file", file instanceof Blob ? file : new Blob([file]));
 
 		const { response } = await this.client.api.request<PutObjectResponse>(
 			"put",
@@ -71,8 +71,8 @@ export class BlobObjectsManager {
 		return response.status === "success";
 	}
 
-	private async parseFile(file: string | Buffer) {
-		let result: Buffer | undefined;
+	private async parseFile(file: string | Buffer | Blob) {
+		let result: Buffer | Blob | undefined;
 
 		if (typeof file === "string") {
 			result = await readFile(file).catch(() => undefined);

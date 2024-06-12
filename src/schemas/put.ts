@@ -4,8 +4,8 @@ import { nameLikeSchema } from "./common";
 export const putObjectSchema = z.object({
 	/** A string representing the name for the file. */
 	name: nameLikeSchema,
-	/** Use absolute path or Buffer, can be a single file or compressed (zip) */
-	file: z.string().or(z.instanceof(Buffer)),
+	/** Use absolute path, Buffer or Blob */
+	file: z.string().or(z.instanceof(Buffer)).or(z.instanceof(Blob)),
 	/** A string representing the prefix for the file. */
 	prefix: nameLikeSchema.optional(),
 	/** A number indicating the expiration period of the file, ranging from 1 to 365 days. */
