@@ -4,6 +4,7 @@ import { assertListObjectsResponse } from "../assertions/list";
 import { assertPutObjectResponse } from "../assertions/put";
 import { putObjectPayloadSchema } from "../schemas/put";
 import { SquareCloudBlobError } from "../structures/error";
+import type { ListObjectsResponse } from "../types/list";
 import type { PutObjectResponse, PutObjectType } from "../types/put";
 
 export class BlobObjectsManager {
@@ -19,9 +20,9 @@ export class BlobObjectsManager {
 	 */
 	async list() {
 		const { response } =
-			await this.client.api.request<PutObjectResponse>("list");
+			await this.client.api.request<ListObjectsResponse>("list");
 
-		return assertListObjectsResponse(response);
+		return assertListObjectsResponse(response)?.objects;
 	}
 
 	/**

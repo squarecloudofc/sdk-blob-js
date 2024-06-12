@@ -7,4 +7,6 @@ export const listObjectSchema = z.object({
 	expire_at: z.coerce.date().optional(),
 });
 
-export const listObjectsResponseSchema = z.array(listObjectSchema);
+export const listObjectsResponseSchema = z.object({
+	objects: z.array(listObjectSchema),
+});
