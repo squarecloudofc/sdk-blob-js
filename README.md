@@ -32,9 +32,11 @@ Visit our [official API documentation](https://docs.squarecloud.app/blob-referen
 
 ## Getting Started
 
+- _Login and get your API Key at [https://squarecloud.app/account](https://squarecloud.app/account)._
+
 ```ts
 import { SquareCloudBlob } from "@squarecloud/blob"
-// const { SquareCloudBlob } = require("@squarecloud/blob");
+// CommonJS => const { SquareCloudBlob } = require("@squarecloud/blob");
 
 const blob = new SquareCloudBlob("Your API Key")
 const objects = await blob.objects.list()
@@ -42,15 +44,26 @@ const objects = await blob.objects.list()
 
 ### Creating an object
 
+- _Check supported file types [here](https://docs.squarecloud.app/services/blob#supported-file-types)._
+
 ```ts
-const object = await blob.objects.put({ file: "path/to/file.png", name: "my_image" })
-console.log(object.url)
+const blobObject = await blob.objects.put({
+  file: "path/to/file.png", // Absolute path to your file, Buffer or Blob
+  name: "my_image.png" // File name with extension
+})
+
+console.log(blobObject.url)
 ```
 
 ### Deleting objects
 
 ```ts
-const objectsToDelete = ["ID/prefix/name1_xxx-xxx.zip", "ID/prefix/name_xxx-xxx-xxx.png"]
+// List of objects to delete (Limit of 100 per request)
+const objectsToDelete = [
+  "ID/prefix/name1_xxx-xxx.mp4",
+  "ID/prefix/name_xxx-xxx-xxx.png"
+]
+
 await blob.objects.delete(objectsToDelete)
 ```
 
