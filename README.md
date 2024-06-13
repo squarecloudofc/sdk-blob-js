@@ -82,6 +82,21 @@ const objectsToDelete = [
 await blob.objects.delete(objectsToDelete)
 ```
 
+### Extras
+
+#### Mime types handling
+
+- _Check supported file types [here](https://docs.squarecloud.app/services/blob#supported-file-types)._
+
+```ts
+import { MimeTypeUtil } from "@squarecloud/blob"
+
+// Get a supported mime type from a file extension
+console.log(MimeTypeUtil.fromExtension("jpeg"))   // "image/jpeg"       | Supported
+console.log(MimeTypeUtil.fromExtension("json"))   // "application/json" | Supported
+console.log(MimeTypeUtil.fromExtension("potato")) // "text/plain"       | Unsupported, defaults to text/plain
+```
+
 ## Contributing
 
 Feel free to contribute with suggestions or bug reports at our [GitHub repository](https://github.com/squarecloudofc/sdk-blob-js).

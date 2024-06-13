@@ -17,4 +17,4 @@ export class SquareCloudBlob {
 
 export * from "./types/create";
 export * from "./types/list";
-export { MimeTypes } from "./utils/mimetype";
+export * from "./utils/mimetype";

@@ -2,7 +2,7 @@ import type { SquareCloudBlob } from "..";
 import { SquareCloudBlobError } from "../structures/error";
 import type { CreateObjectResponse, CreateObjectType } from "../types/create";
 import type { ListObjectsResponse } from "../types/list";
-import { getMimeTypeFromExtension } from "../utils/mimetype";
+import { MimeTypeUtil } from "../utils/mimetype";
 import { parsePathLike } from "../utils/pathlike";
 import { assertCreateObjectResponse } from "../validation/assertions/create";
 import { assertListObjectsResponse } from "../validation/assertions/list";
@@ -41,7 +41,7 @@ export class ObjectsManager {
 		const file = await parsePathLike(payload.file);
 		const mimeType =
 			typeof object.file === "string"
-				? getMimeTypeFromExtension(object.file.split(".")[1])
+				? MimeTypeUtil.fromExtension(object.file.split(".")[1])
 				: object.mimeType;
 
 		const formData = new FormData();

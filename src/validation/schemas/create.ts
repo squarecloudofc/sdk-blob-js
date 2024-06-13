@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { mimeTypes } from "../../utils/mimetype";
+import { MimeTypeUtil } from "../../utils/mimetype";
 import { nameLikeSchema } from "./common";
 
 export const createObjectSchema = z
@@ -9,7 +9,7 @@ export const createObjectSchema = z
 		/** Use absolute path, Buffer or Blob */
 		file: z.string().or(z.instanceof(Buffer)),
 		/** A string representing the MIME type of the file. */
-		mimeType: z.enum(mimeTypes).optional(),
+		mimeType: z.enum(MimeTypeUtil.mimeTypes).optional(),
 		/** A string representing the prefix for the file. */
 		prefix: nameLikeSchema.optional(),
 		/** A number indicating the expiration period of the file, ranging from 1 to 365 days. */
