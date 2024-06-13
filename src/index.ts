@@ -1,5 +1,5 @@
 import { APIManager } from "./managers/api";
-import { BlobObjectsManager } from "./managers/objects";
+import { ObjectsManager } from "./managers/objects";
 
 export class SquareCloudBlob {
 	public static apiInfo = {
@@ -8,13 +8,13 @@ export class SquareCloudBlob {
 	};
 
 	public readonly api: APIManager;
-	public readonly objects = new BlobObjectsManager(this);
+	public readonly objects = new ObjectsManager(this);
 
 	constructor(apiKey: string) {
 		this.api = new APIManager(apiKey);
 	}
 }
 
+export * from "./types/create";
 export * from "./types/list";
-export * from "./types/put";
 export { MimeTypes } from "./utils/mimetype";

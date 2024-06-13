@@ -28,7 +28,6 @@ export function handleAPIObjectAssertion({
 	schema,
 	value,
 	code,
-	route,
 }: APIObjectAssertionProps) {
 	const name = code.toLowerCase().replaceAll("_", " ");
 
@@ -42,7 +41,7 @@ export function handleAPIObjectAssertion({
 
 		throw new SquareCloudBlobError(
 			`INVALID_API_${code}`,
-			`Invalid ${name} object received from API ${route}`,
+			`Invalid ${name} object received from API`,
 			{ cause },
 		);
 	}

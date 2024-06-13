@@ -6,7 +6,6 @@ export function assertListObjectsResponse(value: unknown): ListObjectsResponse {
 	return handleAPIObjectAssertion({
 		schema: listObjectsResponseSchema,
 		code: "LIST_OBJECTS",
-		route: "/list",
 		value,
 	});
 }

@@ -47,7 +47,7 @@ const objects = await blob.objects.list()
 - _Check supported file types [here](https://docs.squarecloud.app/services/blob#supported-file-types)._
 
 ```ts
-const blobObject = await blob.objects.put({
+const blobObject = await blob.objects.create({
   file: "path/to/file.png", // Absolute path to your file
   name: "my_image",         // File name without extension
 })
@@ -61,7 +61,7 @@ console.log(blobObject.url)
 import { MimeTypes } from "@squarecloud/blob"
 // CommonJS => const { MimeTypes } = require("@squarecloud/blob")
 
-const blobObject = await blob.objects.put({
+const blobObject = await blob.objects.create({
   file: Buffer.from("content"),
   name: "my_image",
   mimeType: MimeTypes.IMAGE_JPEG, // Also accepts an string "image/jpeg"

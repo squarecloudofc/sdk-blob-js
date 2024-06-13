@@ -12,5 +12,4 @@ export type LiteralAssertionProps = BaseAssertionProps & {
 
 export type APIObjectAssertionProps = BaseAssertionProps & {
 	code: string;
-	route: string;
 };

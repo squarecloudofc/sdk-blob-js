@@ -2,7 +2,7 @@ import { z } from "zod";
 import { mimeTypes } from "../../utils/mimetype";
 import { nameLikeSchema } from "./common";
 
-export const putObjectSchema = z
+export const createObjectSchema = z
 	.object({
 		/** A string representing the name for the file. */
 		name: nameLikeSchema,
@@ -24,7 +24,7 @@ export const putObjectSchema = z
 		path: ["mimeType"],
 	});
 
-export const putObjectPayloadSchema = putObjectSchema.transform(
+export const createObjectPayloadSchema = createObjectSchema.transform(
 	({ file, securityHash, autoDownload, ...rest }) => ({
 		file,
 		params: {
@@ -35,7 +35,7 @@ export const putObjectPayloadSchema = putObjectSchema.transform(
 	}),
 );
 
-export const putObjectResponseSchema = z.object({
+export const createObjectResponseSchema = z.object({
 	/** The id of the uploaded file. */
 	id: z.string(),
 	/** The name of the uploaded file. */

@@ -1,14 +1,14 @@
 import type { SquareCloudBlob } from "..";
 import { SquareCloudBlobError } from "../structures/error";
+import type { CreateObjectResponse, CreateObjectType } from "../types/create";
 import type { ListObjectsResponse } from "../types/list";
-import type { PutObjectResponse, PutObjectType } from "../types/put";
 import { getMimeTypeFromExtension } from "../utils/mimetype";
 import { parsePathLike } from "../utils/pathlike";
+import { assertCreateObjectResponse } from "../validation/assertions/create";
 import { assertListObjectsResponse } from "../validation/assertions/list";
-import { assertPutObjectResponse } from "../validation/assertions/put";
-import { putObjectPayloadSchema } from "../validation/schemas/put";
+import { createObjectPayloadSchema } from "../validation/schemas/create";
 
-export class BlobObjectsManager {
+export class ObjectsManager {
 	constructor(private readonly client: SquareCloudBlob) {}
 
 	/**
@@ -21,7 +21,7 @@ export class BlobObjectsManager {
 	 */
 	async list() {
 		const { response } =
-			await this.client.api.request<ListObjectsResponse>("list");
+			await this.client.api.request<ListObjectsResponse>("objects");
 
 		return assertListObjectsResponse(response)?.objects;
 	}
@@ -33,11 +33,11 @@ export class BlobObjectsManager {
 	 *
 	 * @example
 	 * ```js
-	 * await blob.objects.put({ file: "path/to/file.jpeg", name: "my_image" });
+	 * await blob.objects.create({ file: "path/to/file.jpeg", name: "my_image" });
 	 * ```
 	 */
-	async put(object: PutObjectType) {
-		const payload = putObjectPayloadSchema.parse(object);
+	async create(object: CreateObjectType) {
+		const payload = createObjectPayloadSchema.parse(object);
 		const file = await parsePathLike(payload.file);
 		const mimeType =
 			typeof object.file === "string"
@@ -47,16 +47,16 @@ export class BlobObjectsManager {
 		const formData = new FormData();
 		formData.append("file", new Blob([file], { type: mimeType }));
 
-		const { response } = await this.client.api.request<PutObjectResponse>(
-			"put",
+		const { response } = await this.client.api.request<CreateObjectResponse>(
+			"objects",
 			{
-				method: "PUT",
+				method: "POST",
 				body: formData,
 				params: payload.params,
 			},
 		);
 
-		return assertPutObjectResponse(response);
+		return assertCreateObjectResponse(response);
 	}
 
 	/**
@@ -72,12 +72,12 @@ export class BlobObjectsManager {
 	async delete(...objects: string[] | string[][]) {
 		const ids = objects.flat();
 
-		const response = await this.client.api.request("delete", {
+		const { status } = await this.client.api.request("objects", {
 			method: "DELETE",
 			body: { objects: ids },
 		});
 
-		return response.status === "success";
+		return status === "success";
 	}
 
 	/**
