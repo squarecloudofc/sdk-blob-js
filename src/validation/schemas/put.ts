@@ -36,6 +36,14 @@ export const putObjectPayloadSchema = putObjectSchema.transform(
 );
 
 export const putObjectResponseSchema = z.object({
+	/** The id of the uploaded file. */
+	id: z.string(),
+	/** The name of the uploaded file. */
+	name: z.string(),
+	/** The prefix of the uploaded file. */
+	prefix: z.string().optional(),
+	/** The size of the uploaded file. */
+	size: z.number(),
 	/** The URL of the uploaded file. (File distributed in Square Cloud CDN) */
 	url: z.string(),
 });
