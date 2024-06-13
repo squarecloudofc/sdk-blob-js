@@ -4,5 +4,5 @@
 # dependencies
 /node_modules/
 
-# test
-/test/
+# env
+.env
