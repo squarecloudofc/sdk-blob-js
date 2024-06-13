@@ -1,9 +1,9 @@
 import type { SquareCloudBlob } from "..";
-import { SquareCloudBlobError } from "../structures/error";
+import { BlobObject } from "../structures/object";
 import type { CreateObjectResponse, CreateObjectType } from "../types/create";
 import type { ListObjectsResponse } from "../types/list";
 import { MimeTypeUtil } from "../utils/mimetype";
-import { parsePathLike } from "../utils/pathlike";
+import { parsePathLike } from "../utils/path-like";
 import { assertCreateObjectResponse } from "../validation/assertions/create";
 import { assertListObjectsResponse } from "../validation/assertions/list";
 import { createObjectPayloadSchema } from "../validation/schemas/create";
@@ -22,8 +22,23 @@ export class ObjectsManager {
 	async list() {
 		const { response } =
 			await this.client.api.request<ListObjectsResponse>("objects");
+		const list = assertListObjectsResponse(response);
 
-		return assertListObjectsResponse(response)?.objects;
+		if (!list.objects) {
+			return [];
+		}
+
+		return list.objects.map(
+			(object) =>
+				new BlobObject({
+					idOrUrl: object.id,
+					size: object.size,
+					createdAt: new Date(object.created_at),
+					expiresAt: object.expires_at
+						? new Date(object.expires_at)
+						: undefined,
+				}),
+		);
 	}
 
 	/**
@@ -56,7 +71,12 @@ export class ObjectsManager {
 			},
 		);
 
-		return assertCreateObjectResponse(response);
+		const objectData = assertCreateObjectResponse(response);
+
+		return new BlobObject({
+			idOrUrl: objectData.id,
+			size: objectData.size,
+		});
 	}
 
 	/**
@@ -78,28 +98,5 @@ export class ObjectsManager {
 		});
 
 		return status === "success";
-	}
-
-	/**
-	 * Parses the object URL to extract id, prefix, and name.
-	 *
-	 * @param url - The object URL to parse.
-	 */
-	parseObjectUrl(url: string) {
-		const pattern =
-			/^https:\/\/public-blob\.squarecloud\.dev\/([^\/]+)\/([^\/]+\/)?([^_]+)_[\w-]+\.\w+$/;
-		const match = pattern.exec(url);
-
-		if (!match) {
-			throw new SquareCloudBlobError(
-				"INVALID_BLOB_URL",
-				"Invalid blob object URL",
-			);
-		}
-
-		let [, id, prefix, name] = match;
-		prefix = prefix ? prefix.slice(0, -1) : "";
-
-		return { id, prefix, name };
 	}
 }
