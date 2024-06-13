@@ -1,5 +1,15 @@
 # @squarecloud/blob
 
+## 1.1.0
+
+### Minor Changes
+
+- 93ebe06: New `BlobObject` structure
+
+### Patch Changes
+
+- a86d7dc: Update API schemas
+
 ## 1.0.1
 
 ### Patch Changes
