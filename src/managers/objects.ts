@@ -1,11 +1,12 @@
-import { readFile } from "fs/promises";
 import type { SquareCloudBlob } from "..";
-import { assertListObjectsResponse } from "../assertions/list";
-import { assertPutObjectResponse } from "../assertions/put";
-import { putObjectPayloadSchema } from "../schemas/put";
 import { SquareCloudBlobError } from "../structures/error";
 import type { ListObjectsResponse } from "../types/list";
 import type { PutObjectResponse, PutObjectType } from "../types/put";
+import { getMimeTypeFromExtension } from "../utils/mimetype";
+import { parsePathLike } from "../utils/pathlike";
+import { assertListObjectsResponse } from "../validation/assertions/list";
+import { assertPutObjectResponse } from "../validation/assertions/put";
+import { putObjectPayloadSchema } from "../validation/schemas/put";
 
 export class BlobObjectsManager {
 	constructor(private readonly client: SquareCloudBlob) {}
@@ -37,14 +38,22 @@ export class BlobObjectsManager {
 	 */
 	async put(object: PutObjectType) {
 		const payload = putObjectPayloadSchema.parse(object);
-		const file = await this.parseFile(payload.file);
+		const file = await parsePathLike(payload.file);
+		const mimeType =
+			typeof object.file === "string"
+				? getMimeTypeFromExtension(object.file.split(".")[1])
+				: object.mimeType;
 
 		const formData = new FormData();
-		formData.append("file", file instanceof Blob ? file : new Blob([file]));
+		formData.append("file", new Blob([file], { type: mimeType }));
 
 		const { response } = await this.client.api.request<PutObjectResponse>(
 			"put",
-			{ method: "PUT", body: formData, params: payload.params },
+			{
+				method: "PUT",
+				body: formData,
+				params: payload.params,
+			},
 		);
 
 		return assertPutObjectResponse(response);
@@ -57,7 +66,7 @@ export class BlobObjectsManager {
 	 *
 	 * @example
 	 * ```js
-	 * await blob.objects.delete("ID/prefix/name1_xxx-xxx.zip", "ID/prefix/name_xxx-xxx-xxx.png");
+	 * await blob.objects.delete("ID/prefix/name1_xxx-xxx.mp4", "ID/prefix/name_xxx-xxx-xxx.png");
 	 * ```
 	 */
 	async delete(...objects: string[] | string[][]) {
@@ -71,20 +80,11 @@ export class BlobObjectsManager {
 		return response.status === "success";
 	}
 
-	private async parseFile(file: string | Buffer | Blob) {
-		let result: Buffer | Blob | undefined;
-
-		if (typeof file === "string") {
-			result = await readFile(file).catch(() => undefined);
-		}
-
-		if (!result) {
-			throw new SquareCloudBlobError("INVALID_FILE", "File not found");
-		}
-
-		return result;
-	}
-
+	/**
+	 * Parses the object URL to extract id, prefix, and name.
+	 *
+	 * @param url - The object URL to parse.
+	 */
 	parseObjectUrl(url: string) {
 		const pattern =
 			/^https:\/\/public-blob\.squarecloud\.dev\/([^\/]+)\/([^\/]+\/)?([^_]+)_[\w-]+\.\w+$/;

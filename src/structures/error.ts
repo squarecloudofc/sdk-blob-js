@@ -4,8 +4,6 @@ export class SquareCloudBlobError extends Error {
 
 		this.name = SquareCloudBlobError.name;
 		this.message = this.getMessage(code);
-
-		Error.captureStackTrace(this, SquareCloudBlobError);
 	}
 
 	private getMessage(rawCode: string) {

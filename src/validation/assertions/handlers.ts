@@ -2,11 +2,11 @@ import type { ZodIssue } from "zod";
 import {
 	SquareCloudBlobError,
 	SquareCloudValidationError,
-} from "../structures/error";
+} from "../../structures/error";
 import type {
 	APIObjectAssertionProps,
 	LiteralAssertionProps,
-} from "../types/assertions";
+} from "../../types/assertions";
 
 export function handleLiteralAssertion({
 	schema,
