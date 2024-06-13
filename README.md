@@ -48,7 +48,7 @@ const objects = await blob.objects.list()
 
 ```ts
 const blobObject = await blob.objects.put({
-  file: "path/to/file.png", // Absolute path to your file or Buffer
+  file: "path/to/file.png", // Absolute path to your file
   name: "my_image",         // File name without extension
 })
 
@@ -59,6 +59,7 @@ console.log(blobObject.url)
 
 ```ts
 import { MimeTypes } from "@squarecloud/blob"
+// CommonJS => const { MimeTypes } = require("@squarecloud/blob")
 
 const blobObject = await blob.objects.put({
   file: Buffer.from("content"),
