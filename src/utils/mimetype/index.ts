@@ -2,13 +2,9 @@ import { type MimeType, mimeTypes, mimeTypesWithExtension } from "./mimetypes";
 
 // biome-ignore lint/complexity/noStaticOnlyClass: organization
 export class MimeTypeUtil {
-	/**
-	 * Supported mime types with their extensions
-	 */
+	/** Supported mime types with their extensions */
 	static mimeTypesWithExtension = mimeTypesWithExtension;
-	/**
-	 * All supported mime types
-	 */
+	/** All supported mime types */
 	static mimeTypes = mimeTypes;
 
 	/**

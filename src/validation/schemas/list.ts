@@ -1,7 +1,9 @@
 import { z } from "zod";
 
 export const listObjectsSchema = z.object({
+	/** Filter by prefix */
 	prefix: z.string().optional(),
+	/** Return objects after this token */
 	continuationToken: z.string().optional(),
 });
 
