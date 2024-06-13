@@ -27,6 +27,10 @@ export const createObjectSchema = z
 export const createObjectPayloadSchema = createObjectSchema.transform(
 	({ file, securityHash, autoDownload, expiresIn, ...rest }) => ({
 		file,
+		mimeType:
+			typeof file === "string"
+				? MimeTypeUtil.fromExtension(file.split(".")[1])
+				: undefined,
 		params: {
 			...rest,
 			expire: expiresIn,

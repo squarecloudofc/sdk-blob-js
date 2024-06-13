@@ -31,13 +31,13 @@ export class APIManager {
 					.filter(([, value]) => Boolean(value))
 					.map(([key, value]) => [key, String(value)]),
 			);
-		const params = new URLSearchParams(paramsObject).toString();
+		const params = new URLSearchParams(paramsObject);
 
-		const { method, headers, body, ...rest } = options;
+		const { params: _, headers, body, ...rest } = options;
+
 		const init: RequestInit = {
-			method: method || "GET",
-			headers: { Authorization: this.apiKey, ...(headers || {}) },
 			...rest,
+			headers: { ...(headers || {}), Authorization: this.apiKey },
 		};
 
 		if (body) {

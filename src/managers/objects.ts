@@ -2,7 +2,6 @@ import type { SquareCloudBlob } from "..";
 import { BlobObject } from "../structures/object";
 import type { CreateObjectResponse, CreateObjectType } from "../types/create";
 import type { ListObjectsResponse } from "../types/list";
-import { MimeTypeUtil } from "../utils/mimetype";
 import { parsePathLike } from "../utils/path-like";
 import { assertCreateObjectResponse } from "../validation/assertions/create";
 import { assertListObjectsResponse } from "../validation/assertions/list";
@@ -16,7 +15,7 @@ export class ObjectsManager {
 	 *
 	 * @example
 	 * ```js
-	 * const objects = await blob.objects.list();
+	 * blob.objects.list();
 	 * ```
 	 */
 	async list() {
@@ -28,17 +27,19 @@ export class ObjectsManager {
 			return [];
 		}
 
-		return list.objects.map(
-			(object) =>
-				new BlobObject({
-					idOrUrl: object.id,
-					size: object.size,
-					createdAt: new Date(object.created_at),
-					expiresAt: object.expires_at
-						? new Date(object.expires_at)
-						: undefined,
-				}),
-		);
+		return list.objects.map((objectData) => {
+			const createdAt = new Date(objectData.created_at);
+			const expiresAt = objectData.expires_at
+				? new Date(objectData.expires_at)
+				: undefined;
+
+			return new BlobObject({
+				idOrUrl: objectData.id,
+				size: objectData.size,
+				createdAt,
+				expiresAt,
+			});
+		});
 	}
 
 	/**
@@ -48,27 +49,31 @@ export class ObjectsManager {
 	 *
 	 * @example
 	 * ```js
-	 * await blob.objects.create({ file: "path/to/file.jpeg", name: "my_image" });
+	 * // Basic usage with absolute path
+	 * blob.objects.create({
+	 * 	file: "path/to/file.jpeg",
+	 * 	name: "my_image"
+	 * });
+	 *
+	 * // Advanced usage with Buffer
+	 * blob.objects.create({
+	 * 	file: Buffer.from("content"),
+	 * 	name: "my_image",
+	 * 	mimeType: "image/jpeg"
+	 * })
 	 * ```
 	 */
 	async create(object: CreateObjectType) {
 		const payload = createObjectPayloadSchema.parse(object);
 		const file = await parsePathLike(payload.file);
-		const mimeType =
-			typeof object.file === "string"
-				? MimeTypeUtil.fromExtension(object.file.split(".")[1])
-				: object.mimeType;
+		const type = payload.mimeType || object.mimeType;
 
 		const formData = new FormData();
-		formData.append("file", new Blob([file], { type: mimeType }));
+		formData.append("file", new Blob([file], { type }));
 
 		const { response } = await this.client.api.request<CreateObjectResponse>(
 			"objects",
-			{
-				method: "POST",
-				body: formData,
-				params: payload.params,
-			},
+			{ method: "POST", body: formData, params: payload.params },
 		);
 
 		const objectData = assertCreateObjectResponse(response);
@@ -86,15 +91,16 @@ export class ObjectsManager {
 	 *
 	 * @example
 	 * ```js
-	 * await blob.objects.delete("ID/prefix/name1_xxx-xxx.mp4", "ID/prefix/name_xxx-xxx-xxx.png");
+	 * blob.objects.delete([
+	 * 	"userId/prefix/name1_xxx-xxx.mp4",
+	 * 	"userId/prefix/name_xxx-xxx-xxx.png"
+	 * ]);
 	 * ```
 	 */
-	async delete(...objects: string[] | string[][]) {
-		const ids = objects.flat();
-
+	async delete(objects: string[]) {
 		const { status } = await this.client.api.request("objects", {
 			method: "DELETE",
-			body: { objects: ids },
+			body: { objects },
 		});
 
 		return status === "success";
