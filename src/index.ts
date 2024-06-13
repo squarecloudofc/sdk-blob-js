@@ -14,3 +14,7 @@ export class SquareCloudBlob {
 		this.api = new APIManager(apiKey);
 	}
 }
+
+export * from "./types/list";
+export * from "./types/put";
+export { MimeTypes } from "./utils/mimetype";
