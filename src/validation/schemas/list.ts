@@ -1,6 +1,15 @@
 import { z } from "zod";
 
-export const listObjectSchema = z.object({
+export const listObjectsSchema = z.object({
+	prefix: z.string().optional(),
+	continuationToken: z.string().optional(),
+});
+
+export const listObjectsPayloadSchema = listObjectsSchema
+	.optional()
+	.transform((params) => ({ params }));
+
+export const listObjectResponseSchema = z.object({
 	id: z.string(),
 	size: z.number(),
 	created_at: z.coerce.date(),
@@ -8,5 +17,5 @@ export const listObjectSchema = z.object({
 });
 
 export const listObjectsResponseSchema = z.object({
-	objects: z.array(listObjectSchema),
+	objects: z.array(listObjectResponseSchema).default([]),
 });

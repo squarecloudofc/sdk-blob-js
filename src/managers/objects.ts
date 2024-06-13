@@ -1,11 +1,12 @@
 import type { SquareCloudBlob } from "..";
 import { BlobObject } from "../structures/object";
 import type { CreateObjectResponse, CreateObjectType } from "../types/create";
-import type { ListObjectsResponse } from "../types/list";
+import type { ListObjectsResponse, ListObjectsType } from "../types/list";
 import { parsePathLike } from "../utils/path-like";
 import { assertCreateObjectResponse } from "../validation/assertions/create";
 import { assertListObjectsResponse } from "../validation/assertions/list";
 import { createObjectPayloadSchema } from "../validation/schemas/create";
+import { listObjectsPayloadSchema } from "../validation/schemas/list";
 
 export class ObjectsManager {
 	constructor(private readonly client: SquareCloudBlob) {}
@@ -18,16 +19,16 @@ export class ObjectsManager {
 	 * blob.objects.list();
 	 * ```
 	 */
-	async list() {
-		const { response } =
-			await this.client.api.request<ListObjectsResponse>("objects");
-		const list = assertListObjectsResponse(response);
+	async list(options?: ListObjectsType) {
+		const payload = listObjectsPayloadSchema.parse(options);
 
-		if (!list.objects) {
-			return [];
-		}
+		const { response } = await this.client.api.request<ListObjectsResponse>(
+			"objects",
+			{ params: payload.params },
+		);
+		const { objects } = assertListObjectsResponse(response);
 
-		return list.objects.map((objectData) => {
+		return objects.map((objectData) => {
 			const createdAt = new Date(objectData.created_at);
 			const expiresAt = objectData.expires_at
 				? new Date(objectData.expires_at)
