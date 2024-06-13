@@ -1,5 +1,11 @@
 # @squarecloud/blob
 
+## 1.0.1
+
+### Patch Changes
+
+- 044bac6: New `MimeTypeUtil` class for handling supported mime types
+
 ## 1.0.0
 
 ### Major Changes
