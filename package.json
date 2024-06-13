@@ -13,10 +13,11 @@
 		"build:ts": "tsup ./src",
 		"lint": "biome check --apply .",
 		"test": "node --env-file=.env -r ts-node/register",
-		"test:list": "npm run test ./test/list.test.ts",
-		"test:create": "npm run test ./test/create.test.ts",
-		"test:delete": "npm run test ./test/delete.test.ts",
-		"test:mime": "npm run test ./test/mimetypes.test.ts",
+		"test:stats": "npm test ./test/stats.test.ts",
+		"test:list": "npm test ./test/list.test.ts",
+		"test:create": "npm test ./test/create.test.ts",
+		"test:delete": "npm test ./test/delete.test.ts",
+		"test:mime": "npm test ./test/mimetypes.test.ts",
 		"prepare": "husky"
 	},
 	"engines": {
