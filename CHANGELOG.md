@@ -1,5 +1,16 @@
 # @squarecloud/blob
 
+## 1.2.0
+
+### Minor Changes
+
+- c126ce5: Add `options` parameter for `objects.list`
+- 53f910f: New `SquareCloudBlob#stats` method for checking account stats
+
+### Patch Changes
+
+- 4311dc4: No longer accept rest arrays at `objects.delete`
+
 ## 1.1.0
 
 ### Minor Changes
