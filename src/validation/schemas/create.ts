@@ -13,7 +13,7 @@ export const createObjectSchema = z
 		/** A string representing the prefix for the file. */
 		prefix: nameLikeSchema.optional(),
 		/** A number indicating the expiration period of the file, ranging from 1 to 365 days. */
-		expire: z.number().min(1).max(365).optional(),
+		expiresIn: z.number().min(1).max(365).optional(),
 		/** Set to true if a security hash is required. */
 		securityHash: z.boolean().optional(),
 		/** Set to true if the file should be set for automatic download. */
@@ -25,10 +25,11 @@ export const createObjectSchema = z
 	});
 
 export const createObjectPayloadSchema = createObjectSchema.transform(
-	({ file, securityHash, autoDownload, ...rest }) => ({
+	({ file, securityHash, autoDownload, expiresIn, ...rest }) => ({
 		file,
 		params: {
 			...rest,
+			expire: expiresIn,
 			security_hash: securityHash,
 			auto_download: autoDownload,
 		},
