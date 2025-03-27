@@ -1,7 +1,6 @@
 import { blob } from "./index.test";
 
-const objectsToDelete: string[] = [];
+const objectToDelete: string = "test.png";
 
-// Delete objects
-
-blob.objects.delete(objectsToDelete).then(console.log);
+// Delete object
+blob.objects.delete(objectToDelete).then(console.log);

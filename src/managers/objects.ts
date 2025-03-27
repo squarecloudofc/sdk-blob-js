@@ -86,22 +86,19 @@ export class ObjectsManager {
 	}
 
 	/**
-	 * Deletes multiple objects.
+	 * Delete an object from the storage.
 	 *
-	 * @param objects - An array of object IDs
+	 * @param object - An array of object IDs
 	 *
 	 * @example
 	 * ```js
-	 * blob.objects.delete([
-	 * 	"userId/prefix/name1_xxx-xxx.mp4",
-	 * 	"userId/prefix/name_xxx-xxx-xxx.png"
-	 * ]);
+	 * blob.object.delete("userId/prefix/name1_xxx-xxx.mp4");
 	 * ```
 	 */
-	async delete(objects: string[]) {
+	async delete(object: string) {
 		const { status } = await this.client.api.request("objects", {
 			method: "DELETE",
-			body: { objects },
+			body: { object },
 		});
 
 		return status === "success";
