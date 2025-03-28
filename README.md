@@ -70,16 +70,10 @@ const blobObject = await blob.objects.create({
 console.log(blobObject.url)
 ```
 
-### Deleting objects
+### Deleting object
 
 ```ts
-// List of objects to delete (Limit of 100 per request)
-const objectsToDelete = [
-  "ID/prefix/name1_xxx-xxx.mp4",
-  "ID/prefix/name_xxx-xxx-xxx.png"
-]
-
-await blob.objects.delete(objectsToDelete)
+await blob.objects.delete("ID/prefix/name1_xxx-xxx.mp4")
 ```
 
 ### Extras
