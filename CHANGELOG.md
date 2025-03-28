@@ -1,5 +1,15 @@
 # @squarecloud/blob
 
+## 1.4.0
+
+### Minor Changes
+
+- cd7a4eb: update delete method to handle a single object and improve documentation
+
+### Patch Changes
+
+- cd7a4eb: fix release :D
+
 ## 1.2.0
 
 ### Minor Changes
