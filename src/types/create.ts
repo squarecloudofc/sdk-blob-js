@@ -1,6 +1,6 @@
 import type { MimeTypes } from "../utils/mimetype";
 
-export interface CreateObjectOptions {
+export type CreateObjectOptions = {
 	/**
 	 * A string representing the name of the file.
 	 * Must adhere to the a to z, A to Z, 0 to 9, and _ pattern. (3 to 32 characters)
@@ -21,9 +21,9 @@ export interface CreateObjectOptions {
 	securityHash?: boolean;
 	/** Set to true if the file should be set for automatic download. */
 	autoDownload?: boolean;
-}
+};
 
-export interface CreateObjectResponse {
+export type CreateObjectResponse = {
 	/** The id of the uploaded file. */
 	id: string;
 	/** The name of the uploaded file. */
@@ -34,4 +34,4 @@ export interface CreateObjectResponse {
 	url: string;
 	/** The prefix of the uploaded file. */
 	prefix?: string;
-}
+};

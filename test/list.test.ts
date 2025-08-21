@@ -1,7 +1,7 @@
-import type { ListObjectsType } from "../src";
+import type { ListObjectsOptions } from "../src";
 import { blob } from "./index.test";
 
-const listOptions: ListObjectsType = {
+const listOptions: ListObjectsOptions = {
 	prefix: "test",
 };
 

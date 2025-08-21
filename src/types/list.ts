@@ -1,8 +1,15 @@
-import type { z } from "zod";
-import type {
-	listObjectsResponseSchema,
-	listObjectsSchema,
-} from "../validation/schemas/list";
+export type ListObjectsOptions = {
+	prefix?: string;
+	continuationToken?: string;
+};
 
-export type ListObjectsType = z.infer<typeof listObjectsSchema>;
-export type ListObjectsResponse = z.infer<typeof listObjectsResponseSchema>;
+export type ListedObject = {
+	id: string;
+	size: number;
+	created_at: Date;
+	expires_at?: Date;
+};
+
+export type ListObjectsResponse = {
+	objects: ListedObject[];
+};

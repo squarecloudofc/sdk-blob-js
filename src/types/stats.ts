@@ -1,4 +1,4 @@
-export interface StatsResponse {
+export type StatsResponse = {
 	usage: {
 		/** The total number of objects in your account. */
 		objects: number;
@@ -19,4 +19,4 @@ export interface StatsResponse {
 		/** The total estimate of all objects, storage and extra storage in your account, in BRL. */
 		totalEstimate: number;
 	};
-}
+};

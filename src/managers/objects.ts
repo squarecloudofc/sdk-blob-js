@@ -5,11 +5,9 @@ import type {
 	CreateObjectOptions,
 	CreateObjectResponse,
 } from "../types/create";
-import type { ListObjectsResponse, ListObjectsType } from "../types/list";
+import type { ListObjectsOptions, ListObjectsResponse } from "../types/list";
 import { parsePathLike } from "../utils/path-like";
 import { makeCreateObjectPayload } from "../utils/payloads";
-import { assertListObjectsResponse } from "../validation/assertions/list";
-import { listObjectsPayloadSchema } from "../validation/schemas/list";
 
 export class ObjectsManager {
 	constructor(private readonly client: SquareCloudBlob) {}
@@ -22,14 +20,11 @@ export class ObjectsManager {
 	 * blob.objects.list();
 	 * ```
 	 */
-	async list(options?: ListObjectsType) {
-		const payload = listObjectsPayloadSchema.parse(options);
-
-		const response = await this.client.api.request<ListObjectsResponse>(
+	async list(options?: ListObjectsOptions) {
+		const { objects } = await this.client.api.request<ListObjectsResponse>(
 			"objects",
-			{ params: payload.params },
+			{ params: options },
 		);
-		const { objects } = assertListObjectsResponse(response);
 
 		return objects.map((objectData) => {
 			const createdAt = new Date(objectData.created_at);
@@ -49,7 +44,7 @@ export class ObjectsManager {
 	/**
 	 * Uploads an object to the storage.
 	 *
-	 * @param data - An object to upload
+	 * @param options - An object to upload
 	 *
 	 * @example
 	 * ```js
@@ -67,17 +62,17 @@ export class ObjectsManager {
 	 * })
 	 * ```
 	 */
-	async create(data: CreateObjectOptions) {
-		if (data.file instanceof Buffer && !data.mimeType) {
+	async create(options: CreateObjectOptions) {
+		if (options.file instanceof Buffer && !options.mimeType) {
 			throw new SquareCloudBlobError(
 				"MIME_TYPE_REQUIRED",
 				"Mime type is required when using a Buffer",
 			);
 		}
 
-		const payload = makeCreateObjectPayload(data);
+		const payload = makeCreateObjectPayload(options);
 		const file = await parsePathLike(payload.file);
-		const type = payload.mimeType || data.mimeType;
+		const type = payload.mimeType || options.mimeType;
 
 		const formData = new FormData();
 		formData.append("file", new Blob([new Uint8Array(file)], { type }));
