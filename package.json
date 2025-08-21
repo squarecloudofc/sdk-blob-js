@@ -9,11 +9,9 @@
 	"packageManager": "pnpm@10.15.0",
 	"scripts": {
 		"release": "pnpm build && changeset publish",
-		"build": "run-s build:*",
-		"build:lint": "biome check .",
-		"build:ts": "tsup ./src",
+		"build": "tsup ./src",
 		"lint": "biome check --write .",
-		"test": "node --env-file=.env -r ts-node/register",
+		"test": "tsx --env-file=.env",
 		"test:stats": "pnpm test ./test/stats.test.ts",
 		"test:list": "pnpm test ./test/list.test.ts",
 		"test:create": "pnpm test ./test/create.test.ts",
@@ -27,10 +25,8 @@
 		"@biomejs/biome": "^2.2.0",
 		"@changesets/cli": "^2.29.6",
 		"@types/node": "^24.3.0",
-		"npm-run-all": "^4.1.5",
-		"ts-node": "^10.9.2",
-		"ts-node-dev": "^2.0.0",
 		"tsup": "^8.5.0",
+		"tsx": "^4.20.4",
 		"typescript": "^5.9.2"
 	},
 	"keywords": [
