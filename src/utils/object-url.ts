@@ -15,18 +15,18 @@ export function parseObjectUrl(url: string) {
 		throw new SquareCloudBlobError("Invalid object URL");
 	}
 
-	const payload = {
-		userId: match.groups.userId.replace("/", ""),
-		prefix: match.groups.prefix?.replace("/", ""),
-		name: match.groups.name,
-		hash: match.groups.hash,
-		extension: match.groups.extension,
-	};
+	const userId = match.groups.userId.replace("/", "");
+	const prefix = match.groups.prefix?.replace("/", "");
+	const name = match.groups.name;
+	const hash = match.groups.hash;
+	const extension = match.groups.extension;
 
 	return {
-		id: `${payload.userId}/${payload.prefix ? `${payload.prefix}/` : ""}${
-			payload.name
-		}-${payload.hash}.${payload.extension}`,
-		...payload,
+		id: `${userId}/${prefix ? `${prefix}/` : ""}${name}-${hash}.${extension}`,
+		userId,
+		prefix,
+		name,
+		hash,
+		extension,
 	};
 }
