@@ -20,7 +20,7 @@ export class APIManager {
 		if (data.status === "error") {
 			throw new SquareCloudBlobError(data.code || "UNKNOWN_ERROR");
 		}
-		return data;
+		return data.response;
 	}
 
 	private parseOptions(options: APIRequestInit) {

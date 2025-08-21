@@ -16,8 +16,7 @@ export class SquareCloudBlob {
 	}
 
 	async stats() {
-		const { response } = await this.api.request<StatsResponse>("account/stats");
-		return response;
+		return this.api.request<StatsResponse>("account/stats");
 	}
 }
 

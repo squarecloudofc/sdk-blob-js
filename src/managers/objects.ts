@@ -25,7 +25,7 @@ export class ObjectsManager {
 	async list(options?: ListObjectsType) {
 		const payload = listObjectsPayloadSchema.parse(options);
 
-		const { response } = await this.client.api.request<ListObjectsResponse>(
+		const response = await this.client.api.request<ListObjectsResponse>(
 			"objects",
 			{ params: payload.params },
 		);
@@ -82,7 +82,7 @@ export class ObjectsManager {
 		const formData = new FormData();
 		formData.append("file", new Blob([new Uint8Array(file)], { type }));
 
-		const { response } = await this.client.api.request<CreateObjectResponse>(
+		const response = await this.client.api.request<CreateObjectResponse>(
 			"objects",
 			{ method: "POST", body: formData, params: payload.params },
 		);
@@ -104,11 +104,9 @@ export class ObjectsManager {
 	 * ```
 	 */
 	async delete(object: string) {
-		const { status } = await this.client.api.request("objects", {
+		await this.client.api.request("objects", {
 			method: "DELETE",
 			body: { object },
 		});
-
-		return status === "success";
 	}
 }
