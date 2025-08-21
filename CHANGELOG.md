@@ -1,5 +1,12 @@
 # @squarecloud/blob
 
+## 1.4.1
+
+### Patch Changes
+
+- c8102cb: docs: update README to reflect changes in deleting a single object
+- 8e1626b: Fix invalid object url error when expire flag is presented
+
 ## 1.4.0
 
 ### Minor Changes
