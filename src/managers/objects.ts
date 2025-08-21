@@ -1,11 +1,14 @@
 import type { SquareCloudBlob } from "..";
+import { SquareCloudBlobError } from "../structures/error";
 import { BlobObject } from "../structures/object";
-import type { CreateObjectResponse, CreateObjectType } from "../types/create";
+import type {
+	CreateObjectOptions,
+	CreateObjectResponse,
+} from "../types/create";
 import type { ListObjectsResponse, ListObjectsType } from "../types/list";
 import { parsePathLike } from "../utils/path-like";
-import { assertCreateObjectResponse } from "../validation/assertions/create";
+import { makeCreateObjectPayload } from "../utils/payloads";
 import { assertListObjectsResponse } from "../validation/assertions/list";
-import { createObjectPayloadSchema } from "../validation/schemas/create";
 import { listObjectsPayloadSchema } from "../validation/schemas/list";
 
 export class ObjectsManager {
@@ -46,7 +49,7 @@ export class ObjectsManager {
 	/**
 	 * Uploads an object to the storage.
 	 *
-	 * @param object - An object to upload
+	 * @param data - An object to upload
 	 *
 	 * @example
 	 * ```js
@@ -64,24 +67,29 @@ export class ObjectsManager {
 	 * })
 	 * ```
 	 */
-	async create(object: CreateObjectType) {
-		const payload = createObjectPayloadSchema.parse(object);
+	async create(data: CreateObjectOptions) {
+		if (data.file instanceof Buffer && !data.mimeType) {
+			throw new SquareCloudBlobError(
+				"MIME_TYPE_REQUIRED",
+				"Mime type is required when using a Buffer",
+			);
+		}
+
+		const payload = makeCreateObjectPayload(data);
 		const file = await parsePathLike(payload.file);
-		const type = payload.mimeType || object.mimeType;
+		const type = payload.mimeType || data.mimeType;
 
 		const formData = new FormData();
-		formData.append("file", new Blob([file], { type }));
+		formData.append("file", new Blob([new Uint8Array(file)], { type }));
 
 		const { response } = await this.client.api.request<CreateObjectResponse>(
 			"objects",
 			{ method: "POST", body: formData, params: payload.params },
 		);
 
-		const objectData = assertCreateObjectResponse(response);
-
 		return new BlobObject({
-			idOrUrl: objectData.id,
-			size: objectData.size,
+			idOrUrl: response.id,
+			size: response.size,
 		});
 	}
 
