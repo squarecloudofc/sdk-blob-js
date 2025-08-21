@@ -7,7 +7,7 @@ export type APIRequestInit = Omit<RequestInit, "method" | "body"> & {
 export type APIPayload<TResponse = unknown> =
 	| {
 			status: "success";
-			response?: TResponse;
+			response: TResponse;
 	  }
 	| {
 			status: "error";
