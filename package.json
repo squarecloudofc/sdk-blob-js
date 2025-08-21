@@ -18,8 +18,7 @@
 		"test:list": "pnpm test ./test/list.test.ts",
 		"test:create": "pnpm test ./test/create.test.ts",
 		"test:delete": "pnpm test ./test/delete.test.ts",
-		"test:mime": "pnpm test ./test/mimetypes.test.ts",
-		"prepare": "husky"
+		"test:mime": "pnpm test ./test/mimetypes.test.ts"
 	},
 	"engines": {
 		"node": ">=18.0.0"
@@ -28,7 +27,6 @@
 		"@biomejs/biome": "^1.6.4",
 		"@changesets/cli": "^2.27.1",
 		"@types/node": "^20.12.4",
-		"husky": "^9.0.11",
 		"npm-run-all": "^4.1.5",
 		"ts-node": "^10.9.2",
 		"ts-node-dev": "^2.0.0",
