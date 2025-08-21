@@ -1,7 +1,6 @@
 import { APIManager } from "./managers/api";
 import { ObjectsManager } from "./managers/objects";
 import type { StatsResponse } from "./types/stats";
-import { assertStatsResponse } from "./validation/assertions/stats";
 
 export class SquareCloudBlob {
 	public static apiInfo = {
@@ -18,7 +17,7 @@ export class SquareCloudBlob {
 
 	async stats() {
 		const { response } = await this.api.request<StatsResponse>("account/stats");
-		return assertStatsResponse(response);
+		return response;
 	}
 }
 
