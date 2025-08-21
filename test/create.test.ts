@@ -13,7 +13,7 @@ blob.objects.create(createWithPathPayload).then(console.log);
 // Create object using buffer
 
 const createWithBufferPayload: CreateObjectType = {
-	file: Buffer.from("content".repeat(1000)),
+	file: Buffer.from("content".repeat(100)),
 	name: "testing",
 	mimeType: MimeTypes.TEXT_PLAIN,
 };
