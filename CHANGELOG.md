@@ -1,5 +1,11 @@
 # @squarecloud/blob
 
+## 1.4.2
+
+### Patch Changes
+
+- 2270574: Fix object url userId parsing error
+
 ## 1.4.1
 
 ### Patch Changes
