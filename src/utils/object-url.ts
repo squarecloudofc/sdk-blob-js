@@ -1,7 +1,7 @@
 import { SquareCloudBlobError } from "../structures/error";
 
 const objectUrlRegex =
-	/^(?<url>https:\/\/public-blob\.squarecloud\.dev)?\/?(?<userId>\d+\/)(?<prefix>[\w\d\-_]+\/)?(?<name>[\w\d_]+)-(?<hash>[\w\d]+)(-ex\d+)?\.(?<extension>\w+)$/;
+	/^(?<url>https:\/\/public-blob\.squarecloud\.dev)?\/?(?<userId>[\w\d]+\/)(?<prefix>[\w\d\-_]+\/)?(?<name>[\w\d_]+)-(?<hash>[\w\d]+)(-ex\d+)?\.(?<extension>\w+)$/;
 
 /**
  * Parses the object URL to extract id, userId, prefix, name, hash and extension.
