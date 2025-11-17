@@ -12,7 +12,7 @@ export class BlobObject {
 	/** The prefix of the object (Optional) */
 	prefix?: string;
 	/** The hash of the object */
-	hash: string;
+	hash?: string;
 	/** The id of the user who created the object */
 	userId: string;
 	/** The file extension of the object */
