@@ -3,12 +3,10 @@ import { SquareCloudBlobError } from "../structures/error";
 import type { APIPayload, APIRequestInit } from "../types/api";
 
 export class APIManager {
-	public readonly baseUrl: string;
+	public readonly baseUrl =
+		`${SquareCloudBlob.apiInfo.baseUrl}/${SquareCloudBlob.apiInfo.version}/`;
 
-	constructor(private readonly apiKey: string) {
-		const { baseUrl, version } = SquareCloudBlob.apiInfo;
-		this.baseUrl = `${baseUrl}/${version}/`;
-	}
+	constructor(protected readonly apiKey: string) {}
 
 	async request<T>(path: string, options: APIRequestInit = {}) {
 		const { init, params } = this.parseOptions(options);

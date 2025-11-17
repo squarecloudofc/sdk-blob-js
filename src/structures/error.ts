@@ -6,7 +6,7 @@ export class SquareCloudBlobError extends Error {
 		this.message = this.getMessage(code);
 	}
 
-	private getMessage(rawCode: string) {
+	protected getMessage(rawCode: string) {
 		const code = rawCode
 			.replaceAll("_", " ")
 			.toLowerCase()
