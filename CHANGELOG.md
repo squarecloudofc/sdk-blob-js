@@ -1,5 +1,11 @@
 # @squarecloud/blob
 
+## 1.4.3
+
+### Patch Changes
+
+- 2dfd741: Fix object url parse error when hash is not provided and add support for expiration.
+
 ## 1.4.2
 
 ### Patch Changes
