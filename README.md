@@ -28,7 +28,7 @@ pnpm add @squarecloud/blob
 
 ## Documentation
 
-Visit our [official API documentation](https://docs.squarecloud.app/blob-reference/) for more information about this service.
+Visit our [official API documentation](https://docs.squarecloud.app/en/blob-reference/authentication) for more information about this service.
 
 ## Getting Started
 
@@ -44,7 +44,7 @@ const objects = await blob.objects.list()
 
 ### Creating an object
 
-- _Check supported file types [here](https://docs.squarecloud.app/services/blob#supported-file-types)._
+- _Check supported file types [here](https://docs.squarecloud.app/en/services/blob#supported-file-extensions)._
 
 ```ts
 const blobObject = await blob.objects.create({
@@ -80,7 +80,7 @@ await blob.objects.delete("ID/prefix/name1_xxx-xxx.mp4")
 
 #### Mime types handling
 
-- _Check supported file types [here](https://docs.squarecloud.app/services/blob#supported-file-types)._
+- _Check supported file types [here](https://docs.squarecloud.app/en/services/blob#supported-file-extensions)._
 
 ```ts
 import { MimeTypeUtil } from "@squarecloud/blob"
