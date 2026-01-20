@@ -1,5 +1,11 @@
 # @squarecloud/blob
 
+## 1.4.4
+
+### Patch Changes
+
+- c5d48bc: Update documentation URLs.
+
 ## 1.4.3
 
 ### Patch Changes
