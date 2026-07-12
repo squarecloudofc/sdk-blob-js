@@ -20,11 +20,13 @@
 
 ```bash
 npm install @squarecloud/blob
-// or
+# or
 yarn add @squarecloud/blob
-// or
+# or
 pnpm add @squarecloud/blob
 ```
+
+> Requires Node.js 20 or newer.
 
 ## Documentation
 
@@ -102,6 +104,18 @@ Accepts the object id (`userId/key`) or its public URL. Deleting an object that 
 await blob.objects.delete("ID/prefix/name1_xxx-xxx.mp4")
 ```
 
+### Checking account stats
+
+Returns the number of objects, storage used and the price estimate for your account. Cached server-side for 60 seconds.
+
+```ts
+const stats = await blob.stats()
+
+console.log(stats.usage.objects)         // Total objects in your account
+console.log(stats.usage.storage)         // Storage used, in bytes
+console.log(stats.billing.totalEstimate) // Price estimate, in BRL
+```
+
 ### Handling errors
 
 API and validation errors throw `SquareCloudBlobError`, which exposes the raw API error code via `error.code`:
@@ -140,3 +154,4 @@ Feel free to contribute with suggestions or bug reports at our [GitHub repositor
 ## Authors
 
 - [@joaotonaco](https://github.com/joaotonaco)
+- [@JoaoOtavioS](https://github.com/JoaoOtavioS)

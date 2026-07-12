@@ -1,5 +1,11 @@
 # @squarecloud/blob
 
+## 2.0.1
+
+### Patch Changes
+
+- Improve README (document `blob.stats()`, fix install snippets, note Node.js 20+ requirement) and update authors/contributors.
+
 ## 2.0.0
 
 ### Major Changes
