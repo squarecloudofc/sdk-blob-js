@@ -12,4 +12,5 @@ export type APIPayload<TResponse = unknown> =
 	| {
 			status: "error";
 			code: string;
+			message?: string;
 	  };

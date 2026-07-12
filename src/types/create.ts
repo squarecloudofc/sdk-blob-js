@@ -6,7 +6,7 @@ export type CreateObjectOptions = {
 	 * Must adhere to the a to z, A to Z, 0 to 9, and _ pattern. (3 to 32 characters)
 	 */
 	name: string;
-	/** Use absolute path, Buffer or Blob */
+	/** Absolute file path or Buffer */
 	file: string | Buffer;
 	/**
 	 * A string representing the prefix for the file.

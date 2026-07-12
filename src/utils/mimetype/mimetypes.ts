@@ -20,7 +20,7 @@ export const mimeTypesWithExtension = {
 	"audio/wav": ["wav"],
 	"audio/ogg": ["ogg"],
 	"audio/opus": ["opus"],
-	"audio/mp4": ["mp4"],
+	"audio/mp4": ["m4a", "mp4"],
 	"audio/mpeg": ["mp3"],
 	"audio/aac": ["aac"],
 	"text/plain": ["txt"],

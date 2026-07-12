@@ -1,10 +1,8 @@
-import { SquareCloudBlob } from "..";
 import { SquareCloudBlobError } from "../structures/error";
 import type { APIPayload, APIRequestInit } from "../types/api";
 
 export class APIManager {
-	public readonly baseUrl =
-		`${SquareCloudBlob.apiInfo.baseUrl}/${SquareCloudBlob.apiInfo.version}/`;
+	public readonly baseUrl = "https://blob.squarecloud.app/v1/";
 
 	constructor(protected readonly apiKey: string) {}
 
@@ -16,7 +14,10 @@ export class APIManager {
 		const data: APIPayload<T> = await response.json();
 
 		if (data.status === "error") {
-			throw new SquareCloudBlobError(data.code || "UNKNOWN_ERROR");
+			throw new SquareCloudBlobError(
+				data.code || "UNKNOWN_ERROR",
+				data.message,
+			);
 		}
 		return data.response;
 	}

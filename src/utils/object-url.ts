@@ -1,7 +1,7 @@
 import { SquareCloudBlobError } from "../structures/error";
 
 const objectUrlRegex =
-	/^(?<url>https:\/\/public-blob\.squarecloud\.dev)?\/?(?<userId>[\w\d]+\/)(?<prefix>[\w\d\-_]+\/)?(?<name>[\w\d_]+)(?:-(?<hash>(?!ex\d+)[\w\d]+))?(?:-ex(?<expiration>\d+))?\.(?<extension>\w+)$/;
+	/^(?<url>https:\/\/public-blob\.squarecloud\.dev)?\/?(?<userId>\w+\/)(?<prefix>[\w-]+\/)?(?<name>\w+)(?:-(?<hash>(?!ex\d+)\w+))?(?:-ex(?<expiration>\d+))?\.(?<extension>\w+)$/;
 
 type ParsedObjectUrl = {
 	id: string;
@@ -22,7 +22,10 @@ export function parseObjectUrl(url: string): ParsedObjectUrl {
 	const match = url.match(objectUrlRegex);
 
 	if (!match?.groups) {
-		throw new SquareCloudBlobError("Invalid object URL");
+		throw new SquareCloudBlobError(
+			"INVALID_OBJECT_URL",
+			`Could not parse object id or URL: ${url}`,
+		);
 	}
 
 	const userId = match.groups.userId.replace("/", "");

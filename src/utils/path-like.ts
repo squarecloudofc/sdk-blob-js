@@ -1,4 +1,4 @@
-import { readFile } from "fs/promises";
+import { readFile } from "node:fs/promises";
 import { SquareCloudBlobError } from "../structures/error";
 
 /**
@@ -11,10 +11,13 @@ export async function parsePathLike(
 ): Promise<Buffer> {
 	if (typeof pathLike === "string") {
 		try {
-			const fileBuffer = await readFile(pathLike);
-			return fileBuffer;
-		} catch {
-			throw new SquareCloudBlobError("INVALID_FILE_PATH", "File not found");
+			return await readFile(pathLike);
+		} catch (error) {
+			throw new SquareCloudBlobError(
+				"INVALID_FILE_PATH",
+				"File not found",
+				error,
+			);
 		}
 	}
 

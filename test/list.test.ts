@@ -9,6 +9,18 @@ const listOptions: ListObjectsOptions = {
 
 blob.objects.list(listOptions).then(console.log);
 
-// List all objects
+// List all objects, following pagination
 
-blob.objects.list().then(console.log);
+async function listAll() {
+	let page = await blob.objects.list();
+	console.log(page.objects);
+
+	while (page.continuationToken) {
+		page = await blob.objects.list({
+			continuationToken: page.continuationToken,
+		});
+		console.log(page.objects);
+	}
+}
+
+listAll();
