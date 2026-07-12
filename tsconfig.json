@@ -1,0 +1,21 @@
+{
+	"compilerOptions": {
+		"target": "ESNext",
+		"lib": ["DOM", "ESNext"],
+		"types": ["node"],
+		"module": "commonjs",
+		"rootDir": "./src",
+		"declaration": true,
+		"sourceMap": true,
+		"outDir": "./lib",
+		"esModuleInterop": true,
+		"forceConsistentCasingInFileNames": true,
+		"noImplicitAny": true,
+		"strictNullChecks": true,
+		"strictFunctionTypes": true,
+		"skipLibCheck": true,
+		// ponytail: tsup injects the deprecated baseUrl into its DTS build; drop this when tsup stops doing that
+		"ignoreDeprecations": "6.0"
+	},
+	"exclude": ["./test/", "./lib/", "tsup.config.ts"]
+}

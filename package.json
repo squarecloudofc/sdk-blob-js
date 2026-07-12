@@ -1,0 +1,74 @@
+{
+	"name": "@squarecloud/blob",
+	"private": false,
+	"version": "2.0.2",
+	"description": "Official Square Cloud Blob SDK for NodeJS",
+	"main": "lib/index.js",
+	"types": "lib/index.d.ts",
+	"module": "lib/index.mjs",
+	"exports": {
+		".": {
+			"import": {
+				"types": "./lib/index.d.mts",
+				"default": "./lib/index.mjs"
+			},
+			"require": {
+				"types": "./lib/index.d.ts",
+				"default": "./lib/index.js"
+			}
+		},
+		"./package.json": "./package.json"
+	},
+	"packageManager": "pnpm@10.15.0",
+	"scripts": {
+		"release": "pnpm build && changeset publish",
+		"build": "tsup ./src",
+		"lint": "biome check --write .",
+		"test": "tsx --env-file=.env",
+		"test:stats": "pnpm test ./test/stats.test.ts",
+		"test:list": "pnpm test ./test/list.test.ts",
+		"test:create": "pnpm test ./test/create.test.ts",
+		"test:delete": "pnpm test ./test/delete.test.ts",
+		"test:mime": "pnpm test ./test/mimetypes.test.ts"
+	},
+	"engines": {
+		"node": ">=20.0.0"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.3",
+		"@changesets/cli": "^2.31.0",
+		"@types/node": "^26.1.1",
+		"tsup": "^8.5.1",
+		"tsx": "^4.23.0",
+		"typescript": "^6.0.3"
+	},
+	"keywords": [
+		"squarecloud",
+		"square",
+		"cloud",
+		"sdk",
+		"blob",
+		"api",
+		"storage",
+		"s3"
+	],
+	"author": {
+		"name": "joaotonaco",
+		"url": "https://github.com/joaotonaco"
+	},
+	"contributors": [
+		{
+			"name": "João Otávio Stivi",
+			"url": "https://github.com/JoaoOtavioS"
+		}
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/squarecloudofc/sdk-blob-js.git"
+	},
+	"bugs": {
+		"url": "https://github.com/squarecloudofc/sdk-blob-js/issues"
+	},
+	"homepage": "https://github.com/squarecloudofc/sdk-blob-js#readme",
+	"license": "MIT"
+}
