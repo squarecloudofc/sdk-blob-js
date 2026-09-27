@@ -21,7 +21,7 @@ jobs:
           run_install: false
 
       - name: Setup node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: 'pnpm'
@@ -31,6 +31,9 @@ jobs:
 
       - name: Run lint
         run: pnpm lint
+
+      - name: Run tests
+        run: pnpm test
 
       - name: Build
         run: pnpm build
@@ -49,22 +52,23 @@ jobs:
           run_install: false
 
       - name: Setup node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: 'pnpm'
+          # changesets/action v2 no longer writes .npmrc from NPM_TOKEN
+          registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
         run: pnpm install
 
       - name: Create PR or publish to npm
         id: changesets
-        uses: changesets/action@v1
+        uses: changesets/action@v2
         with:
-          publish: pnpm run release
+          publish-script: pnpm run release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
 permissions:
   contents: write

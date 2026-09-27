@@ -1,5 +1,30 @@
 # @squarecloud/blob
 
+## 3.0.0
+
+### Major Changes
+
+- Rewrite the SDK for Blob Storage v6.
+  
+  **Breaking changes**
+  
+  - The client methods are flat: `blob.objects.create()` → `blob.put(file, options)`, `blob.objects.list()` → `blob.list()` (async iterator) or `blob.listPage()`, `blob.objects.delete()` → `blob.delete()`.
+  - Options and results use the API's field names (`security_hash`, `auto_download`, `expire: "30d"`, `expires_at`), and results are plain objects: the `BlobObject` class is gone.
+  - Object ids are opaque (`pub/...`, `prv/...`) and are no longer parsed; `delete()` no longer accepts a public URL. Use the `url` from each response.
+  - Removed `MimeTypes`, `MimeTypeUtil` and client-side name/prefix/size validation: the server derives the Content-Type and validates everything. When uploading bytes, pass `filename` to set the extension.
+  - `SquareCloudBlobError` now takes `(status, code, message, extra)`, and `SquareCloudValidationError` is gone. A missing file path throws a plain `Error`.
+  
+  **Features**
+  
+  - Private objects, `update()` (visibility, expiration, headers, metadata), `copy()`/`move()`, `info()` and `downloadUrl()`.
+  - Automatic chunked uploads above ~90 MB, up to 10 GiB.
+  - `uploadTokens.create()` for browser uploads, `shares`, `rules`, `s3Credentials()` and `s3()`.
+  - Automatic retries with backoff on 429, 500, 503 and network errors (`maxRetries` option), and `error.isUpgradeRequired()`.
+
+  **Tooling**
+
+  - The build moved from tsup to tsdown: the files are now `lib/index.cjs` and `lib/index.mjs` (imports through the `exports` map are unaffected), and only `lib/` and the changelog are published.
+
 ## 2.0.2
 
 ### Patch Changes

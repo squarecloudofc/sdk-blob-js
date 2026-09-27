@@ -1,10 +1,11 @@
 {
 	"name": "@squarecloud/blob",
 	"private": false,
-	"version": "2.0.2",
-	"description": "Official Square Cloud Blob SDK for NodeJS",
-	"main": "lib/index.js",
-	"types": "lib/index.d.ts",
+	"version": "3.0.0",
+	"description": "Official Square Cloud Blob SDK for Node.js and browsers",
+	"type": "module",
+	"main": "lib/index.cjs",
+	"types": "lib/index.d.cts",
 	"module": "lib/index.mjs",
 	"exports": {
 		".": {
@@ -13,34 +14,43 @@
 				"default": "./lib/index.mjs"
 			},
 			"require": {
-				"types": "./lib/index.d.ts",
-				"default": "./lib/index.js"
+				"types": "./lib/index.d.cts",
+				"default": "./lib/index.cjs"
 			}
 		},
 		"./package.json": "./package.json"
 	},
-	"packageManager": "pnpm@10.15.0",
+	"files": [
+		"lib",
+		"CHANGELOG.md"
+	],
+	"sideEffects": false,
+	"packageManager": "pnpm@12.6.0",
 	"scripts": {
 		"release": "pnpm build && changeset publish",
-		"build": "tsup ./src",
+		"build": "tsdown -f cjs -f esm -d lib",
 		"lint": "biome check --write .",
-		"test": "tsx --env-file=.env",
-		"test:stats": "pnpm test ./test/stats.test.ts",
-		"test:list": "pnpm test ./test/list.test.ts",
-		"test:create": "pnpm test ./test/create.test.ts",
-		"test:delete": "pnpm test ./test/delete.test.ts",
-		"test:mime": "pnpm test ./test/mimetypes.test.ts"
+		"test": "node test/offline.test.ts",
+		"test:live": "node --env-file=.env test/live.test.ts"
 	},
 	"engines": {
 		"node": ">=20.0.0"
 	},
+	"peerDependencies": {
+		"@aws-sdk/client-s3": "^3.0.0"
+	},
+	"peerDependenciesMeta": {
+		"@aws-sdk/client-s3": {
+			"optional": true
+		}
+	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.5.3",
-		"@changesets/cli": "^2.31.0",
-		"@types/node": "^26.1.1",
-		"tsup": "^8.5.1",
-		"tsx": "^4.23.0",
-		"typescript": "^6.0.3"
+		"@aws-sdk/client-s3": "^3.1141.0",
+		"@biomejs/biome": "^2.5.14",
+		"@changesets/cli": "^3.0.3",
+		"@types/node": "^26.6.3",
+		"tsdown": "^0.23.0",
+		"typescript": "^7.0.2"
 	},
 	"keywords": [
 		"squarecloud",
@@ -53,13 +63,17 @@
 		"s3"
 	],
 	"author": {
-		"name": "joaotonaco",
-		"url": "https://github.com/joaotonaco"
+		"name": "Square Cloud",
+		"url": "https://squarecloud.app"
 	},
 	"contributors": [
 		{
 			"name": "João Otávio Stivi",
 			"url": "https://github.com/JoaoOtavioS"
+		},
+		{
+			"name": "João Gabriel Tonaco",
+			"url": "https://github.com/joaotonaco"
 		}
 	],
 	"repository": {
