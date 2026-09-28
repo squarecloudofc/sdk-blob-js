@@ -29,8 +29,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Run lint
-        run: pnpm lint
+      - name: Format and lint check
+        run: pnpm exec biome ci .
+
+      - name: Typecheck
+        run: pnpm exec tsc --noEmit
 
       - name: Run tests
         run: pnpm test

@@ -27,7 +27,10 @@ export type PutOptions = {
 	security_hash?: boolean;
 	/** 7d to 1825d; Enterprise goes down to 1h. The expiration becomes part of the id. */
 	expire?: Duration;
-	/** `false` fails with `OBJECT_ALREADY_EXISTS` when the name is taken. */
+	/**
+	 * `false` fails with `OBJECT_ALREADY_EXISTS` when the name is taken. Simple
+	 * uploads only (up to ~90 MB): a chunked upload always overwrites.
+	 */
 	overwrite?: boolean;
 	disposition?: Disposition;
 	/** Forces a download (`application/octet-stream`). */
@@ -35,7 +38,10 @@ export type PutOptions = {
 	cache_control?: CacheControl;
 	/** Pro and Enterprise. Keys `^[a-z0-9-]{1,64}$` (never `sq-*`), max 5 keys / 512 B. */
 	metadata?: Record<string, string>;
-	/** 64 lowercase hex. A mismatch fails with `CHECKSUM_MISMATCH` and nothing is stored. */
+	/**
+	 * 64 lowercase hex. A mismatch fails with `CHECKSUM_MISMATCH` and nothing is
+	 * stored. Simple uploads only (up to ~90 MB): a chunked upload does not check it.
+	 */
 	checksum_sha256?: string;
 	/**
 	 * File name whose extension becomes the object's extension. Defaults to the
@@ -202,10 +208,14 @@ export type Rule = {
 	delete_after_days?: number;
 };
 
-export type SavedRule = Rule & { created_at: string; active_from: string };
+export type SavedRule = Rule & {
+	created_at: string;
+	/** Only with `delete_after_days`: when the lifecycle deletion starts. */
+	active_from?: string;
+};
 
 export type UploadTokenOptions = {
-	/** Without a fixed name, `security_hash` is mandatory. */
+	/** Without a fixed name, the security hash is always applied. */
 	name?: string;
 	prefix?: string;
 	private?: boolean;

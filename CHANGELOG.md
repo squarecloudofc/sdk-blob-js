@@ -1,10 +1,43 @@
 # @squarecloud/blob
 
+## 4.0.0
+
+### Major Changes
+
+- Retry only what is safe to repeat.
+  
+  **Breaking changes**
+  
+  - A `429` is never retried. `RATE_LIMITED` is both the per-route window and the account/IP block, which can last 30 minutes, so the caller decides what to do. This includes the simple upload limit (1/s below Pro) and `TOO_MANY_CONCURRENT_UPLOADS`. The one exception is `TOO_MANY_CONCURRENT_CHUNKS` on a chunked part, which the server refuses before reading the part: the part is sent again within `maxRetries`.
+  - Network errors and `5xx` are retried only on `GET` calls and on chunked upload parts (idempotent per part number), and now on any `5xx` (was only `500` and `503`). Simple uploads, starting, completing and aborting a chunked upload, `update()`, `copy()`, `move()`, `delete()`, `rules.set()`, `uploadTokens.create()`, `shares.create()` and `shares.revoke()` get one attempt.
+  - `maxRetries` now defaults to `2` (was `5`), and the backoff is capped at 8 s (was 30 s): `min(8 s, 500 ms · 2^attempt) · U(0.5, 1.0)`.
+  - `SavedRule.active_from` is optional: the API only sends it for rules with `delete_after_days`.
+  - `delete([id])` with a single id now reports `PREFIX_NOT_ALLOWED` in `failed`, like any batch, instead of throwing.
+  
+  **Fixes**
+  
+  - A response body cut off mid-read is a network error: it is retried on `GET` calls and chunked parts, and otherwise the `fetch` error is thrown (it was `UNKNOWN_ERROR` with the response status).
+  - A failed chunked upload waits for the parts still in flight before aborting, so no part lands after the abort and no request outlives `put()`.
+  
+  **Changes**
+  
+  - `RATE_LIMIT` is deprecated in `BlobErrorCode`: the service no longer sends it (the account/IP block is `RATE_LIMITED`). It stays in the union. `DUPLICATE_RULE_PREFIX` is added.
+  - The README and JSDoc now say that a chunked upload (above ~90 MB) does not check `overwrite: false` or `checksum_sha256`, and correct the plan, scope and rate-limit details.
+  
+  **Migration**
+  
+  No method, option or export was renamed or removed. If you relied on the old retries:
+  
+  - Handle `429 RATE_LIMITED` yourself, and wait before trying again: the block can last 30 minutes.
+  - Retry a write after a network error or a `5xx` only when repeating it is safe for you (for example, `put()` to the same name with `overwrite: true`).
+  - Pass `{ maxRetries: 5 }` to keep more attempts on reads and chunked parts.
+  - TypeScript: handle `active_from` being `undefined`.
+
 ## 3.0.0
 
 ### Major Changes
 
-- Rewrite the SDK for Blob Storage v6.
+- Rewrite the SDK for the current Blob Storage API.
   
   **Breaking changes**
   

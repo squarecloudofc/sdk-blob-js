@@ -27,8 +27,6 @@ import type {
 } from "./types.ts";
 
 const BASE_URL = "https://blob.squarecloud.app/v1/";
-/** The only statuses worth repeating; every other 4xx is final. */
-const RETRY_STATUSES = [429, 500, 503];
 
 type RequestOptions = {
 	query?: object;
@@ -44,7 +42,10 @@ const PART_SIZE = 16 * 1024 * 1024;
 const PART_CONCURRENCY = 6;
 
 export type SquareCloudBlobOptions = {
-	/** Retries on 429, 500, 503 and network errors (default 5). */
+	/**
+	 * Retries network errors and 5xx on GET and chunked parts only; never a 429
+	 * except TOO_MANY_CONCURRENT_CHUNKS on a part (default 2).
+	 */
 	maxRetries?: number;
 };
 
@@ -59,7 +60,7 @@ export class SquareCloudBlob {
 	 */
 	constructor(credential: string, options: SquareCloudBlobOptions = {}) {
 		this.credential = credential;
-		this.maxRetries = options.maxRetries ?? 5;
+		this.maxRetries = options.maxRetries ?? 2;
 	}
 
 	private async request<T>(
@@ -87,16 +88,24 @@ export class SquareCloudBlob {
 			init.headers = { ...init.headers, "Content-Type": "application/json" };
 		}
 
+		// Only what is safe to repeat: GET, and chunked parts (idempotent per part number)
+		const idempotent =
+			method === "GET" || (method === "PUT" && path === "objects/chunked");
+
 		for (let attempt = 0; ; attempt++) {
 			let response: Response | undefined;
+			let text = "";
 			try {
 				response = await fetch(url, init);
+				// Read here: a body cut off mid-read is a network error, not a bad body
+				text = await response.text();
 			} catch (networkError) {
-				if (attempt >= this.maxRetries) throw networkError;
+				if (!idempotent || attempt >= this.maxRetries) throw networkError;
+				response = undefined;
 			}
 
 			if (response) {
-				const data = await response.json().catch(() => undefined);
+				const data = parseJson(text);
 				if (response.ok && data?.status === "success") return data.response;
 
 				const { status: _, code, message, ...extra } = data ?? {};
@@ -106,16 +115,22 @@ export class SquareCloudBlob {
 					message,
 					extra,
 				);
+				// Never a 429 (RATE_LIMITED can be a 30-minute account block), except
+				// TOO_MANY_CONCURRENT_CHUNKS: a slot refusal before the part is read, e.g. a part
+				// resent after a network error while the server still holds its slot.
+				// ponytail: shares the maxRetries budget; a dedicated one if parallel large uploads matter
+				const busy = code === "TOO_MANY_CONCURRENT_CHUNKS";
 				if (
-					!RETRY_STATUSES.includes(response.status) ||
+					!idempotent ||
+					(response.status < 500 && !busy) ||
 					attempt >= this.maxRetries
 				) {
 					throw error;
 				}
 			}
 
-			// No Retry-After header exists: exponential backoff with jitter, capped at 30s
-			const delay = Math.min(30_000, 500 * 2 ** attempt);
+			// No Retry-After header exists: exponential backoff with jitter, capped at 8s
+			const delay = Math.min(8_000, 500 * 2 ** attempt);
 			await new Promise((resolve) =>
 				setTimeout(resolve, delay * (0.5 + Math.random() / 2)),
 			);
@@ -169,26 +184,30 @@ export class SquareCloudBlob {
 		);
 		const parts = Math.ceil(data.size / partSize);
 		let next = 0;
-		let failed = false;
+		let failure: { error: unknown } | undefined;
 
 		const worker = async () => {
-			while (!failed && next < parts) {
+			while (!failure && next < parts) {
 				const index = next++;
 				await this.request("PUT", "objects/chunked", {
 					query: { ...handle, part: index + 1 },
+					// A Blob slice: re-sent whole when the part is retried
 					body: data.slice(index * partSize, (index + 1) * partSize),
 					headers: { "Content-Type": "application/octet-stream" },
+				}).catch((error) => {
+					failure ??= { error };
 				});
 			}
 		};
 
 		try {
+			// Every worker settles before the abort, so no part lands after it
 			await Promise.all(
 				Array.from({ length: Math.min(PART_CONCURRENCY, parts) }, worker),
 			);
+			if (failure) throw failure.error;
 			return await this.request("PATCH", "objects/chunked", { json: handle });
 		} catch (error) {
-			failed = true;
 			// ponytail: always abort (frees one of the 32 open-upload slots); expose resume (status/open) when a caller needs to retry a multi-GB complete
 			await this.request("DELETE", "objects/chunked", { json: handle }).catch(
 				() => {},
@@ -287,7 +306,10 @@ export class SquareCloudBlob {
 		} catch (error) {
 			if (!(error instanceof SquareCloudBlobError)) throw error;
 			if (error.code === "OBJECT_NOT_FOUND") result.not_found.push(ids[0]);
-			else if (error.code === "DELETE_FAILED")
+			else if (
+				error.code === "DELETE_FAILED" ||
+				error.code === "PREFIX_NOT_ALLOWED"
+			)
 				result.failed.push({ id: ids[0], code: error.code });
 			else throw error;
 		}
@@ -401,6 +423,14 @@ export class SquareCloudBlob {
 				secretAccessKey: credentials.secret_access_key,
 			},
 		});
+	}
+}
+
+function parseJson(text: string) {
+	try {
+		return JSON.parse(text);
+	} catch {
+		return undefined;
 	}
 }
 

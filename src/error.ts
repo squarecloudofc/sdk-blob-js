@@ -2,7 +2,12 @@
 export type BlobErrorCode =
 	// Global
 	| "ACCESS_DENIED"
+	/** @deprecated No longer emitted: the account/IP block is now `RATE_LIMITED`. */
 	| "RATE_LIMIT"
+	/**
+	 * 429, both a per-route window and the account/IP block (which can last
+	 * ~30 min). Never retried.
+	 */
 	| "RATE_LIMITED"
 	| "MISSING_SCOPE"
 	| "RESOURCE_NOT_ALLOWED"
@@ -52,6 +57,7 @@ export type BlobErrorCode =
 	| "CHUNK_TOO_LARGE"
 	// Settings, tokens, shares, S3
 	| "TOO_MANY_RULES"
+	| "DUPLICATE_RULE_PREFIX"
 	| "INVALID_RULES"
 	| "UPLOAD_TOKEN_TOO_LARGE"
 	| "TOO_MANY_SHARES"
