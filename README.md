@@ -12,7 +12,7 @@
   <img alt="Downloads" src="https://img.shields.io/npm/dw/@squarecloud/blob">
 </div>
 
-- **Zero runtime dependencies**, ~10 KB (4 KB gzipped), ESM + CommonJS. `@aws-sdk/client-s3` is an optional peer, loaded only by `s3()`.
+- **Zero runtime dependencies**, ~10 KB (4 KB gzipped), ESM + CommonJS. `@aws-sdk/client-s3` is an optional peer, loaded only by `s3()`: bundlers (webpack, esbuild, Vite, Metro) build without it.
 - Runs on **Node.js 20+ and in browsers**: only `fetch`, `FormData` and `Blob`. File paths need Node.js; in a browser, use an [upload token](#uploading-from-the-browser).
 - Covers **every Blob Storage endpoint** plus the **S3 gateway**.
 - Files above ~90 MB are uploaded in **parallel parts**, up to 10 GiB, and paths are streamed from disk.
@@ -220,7 +220,7 @@ await blob.rules.set([
 
 ### S3
 
-The S3-compatible gateway works with any S3 client. With `@aws-sdk/client-s3` installed, `blob.s3()` returns a ready client:
+The S3-compatible gateway works with any S3 client. With `@aws-sdk/client-s3` installed, `blob.s3()` returns a ready client. It is Node.js only: the S3 key pair needs an API key, which never goes to a browser.
 
 ```js
 import { ListObjectsV2Command } from "@aws-sdk/client-s3";

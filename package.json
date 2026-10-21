@@ -1,7 +1,7 @@
 {
 	"name": "@squarecloud/blob",
 	"private": false,
-	"version": "4.0.0",
+	"version": "4.0.1",
 	"description": "Official Square Cloud Blob SDK for Node.js and browsers",
 	"type": "module",
 	"main": "lib/index.cjs",
@@ -30,7 +30,7 @@
 		"release": "pnpm build && changeset publish",
 		"build": "tsdown -f cjs -f esm -d lib",
 		"lint": "biome check --write .",
-		"test": "node test/offline.test.ts",
+		"test": "node test/offline.test.ts && node test/bundle.test.ts",
 		"test:live": "node --env-file=.env test/live.test.ts"
 	},
 	"engines": {
@@ -49,6 +49,7 @@
 		"@biomejs/biome": "^2.5.14",
 		"@changesets/cli": "^3.0.3",
 		"@types/node": "^26.6.3",
+		"esbuild": "^0.28.2",
 		"tsdown": "^0.23.0",
 		"typescript": "^7.0.2"
 	},

@@ -28,6 +28,12 @@ import type {
 
 const BASE_URL = "https://blob.squarecloud.app/v1/";
 
+// Node-only modules (put() with a File or Blob needs neither). A const specifier
+// keeps webpack, esbuild and Vite from resolving them at build time, and the
+// .catch() on each import() makes it an optional dependency for Metro
+const S3_MODULE = "@aws-sdk/client-s3";
+const FS_MODULE = "node:fs";
+
 type RequestOptions = {
 	query?: object;
 	json?: object;
@@ -406,12 +412,16 @@ export class SquareCloudBlob {
 	}
 
 	/**
-	 * A ready `S3Client` for the S3 gateway. Requires `@aws-sdk/client-s3`.
+	 * A ready `S3Client` for the S3 gateway. Node.js only; requires `@aws-sdk/client-s3`.
 	 * Buckets: `public`, `private`, `legacy` (read, list, delete only).
 	 */
 	async s3(): Promise<S3Client> {
 		const [{ S3Client }, credentials] = await Promise.all([
-			import("@aws-sdk/client-s3"),
+			import(/* webpackIgnore: true */ /* @vite-ignore */ S3_MODULE).catch(
+				(cause) => {
+					throw new Error("s3() needs @aws-sdk/client-s3 installed", { cause });
+				},
+			) as Promise<typeof import("@aws-sdk/client-s3")>,
 			this.s3Credentials(),
 		]);
 		return new S3Client({
@@ -436,8 +446,12 @@ function parseJson(text: string) {
 
 async function toBlob(file: FileInput): Promise<Blob> {
 	if (typeof file === "string") {
-		// Lazy import keeps browser bundles free of node:fs; the Blob streams from disk
-		const { openAsBlob } = await import("node:fs");
+		// Only file paths reach node:fs; the Blob streams from disk
+		const { openAsBlob }: typeof import("node:fs") = await import(
+			/* webpackIgnore: true */ /* @vite-ignore */ FS_MODULE
+		).catch((cause) => {
+			throw new Error("File paths need Node.js", { cause });
+		});
 		try {
 			return (await openAsBlob(file)) as Blob;
 		} catch (cause) {

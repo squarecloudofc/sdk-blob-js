@@ -1,5 +1,17 @@
 # @squarecloud/blob
 
+## 4.0.1
+
+### Patch Changes
+
+- Bundle for the browser without `@aws-sdk/client-s3`.
+  
+  **Fixes**
+  
+  - `put()` with a `File` or `Blob` no longer breaks the build in webpack (and Next.js), esbuild or Metro (Expo, React Native) when `@aws-sdk/client-s3` is not installed. The `import()` of `@aws-sdk/client-s3` in `s3()` and of `node:fs` for file paths are now hidden from the bundler (optional for Metro), so neither is resolved at build time. They load on demand, as before. Vite no longer warns about `node:fs`.
+  - `s3()` without `@aws-sdk/client-s3` installed throws `s3() needs @aws-sdk/client-s3 installed` (with the original error as `cause`), and a file path outside Node.js throws `File paths need Node.js`.
+  - The README and JSDoc say that `s3()` is Node.js only: its key pair needs an API key, which never goes to a browser.
+
 ## 4.0.0
 
 ### Major Changes

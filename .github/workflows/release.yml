@@ -35,11 +35,12 @@ jobs:
       - name: Typecheck
         run: pnpm exec tsc --noEmit
 
-      - name: Run tests
-        run: pnpm test
-
+      # The bundle test runs against lib/
       - name: Build
         run: pnpm build
+
+      - name: Run tests
+        run: pnpm test
 
   release:
     name: Release

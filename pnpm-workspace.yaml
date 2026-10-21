@@ -1,0 +1,3 @@
+allowBuilds:
+  # The JS API finds the platform binary without the postinstall check
+  esbuild: false
