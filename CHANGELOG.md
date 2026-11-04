@@ -1,5 +1,17 @@
 # @squarecloud/blob
 
+## 4.1.0
+
+### Minor Changes
+
+- The S3 gateway has two buckets, `public` and `private`.
+
+  **Changes**
+
+  - `OBJECT_IS_LEGACY` is deprecated in `BlobErrorCode`: the service no longer sends it, since headers change in place on every object. It stays in the union.
+  - `ObjectInfo.legacy` is deprecated and optional: `info()` no longer returns it.
+  - The README and the `s3()` JSDoc list the `public` and `private` buckets.
+
 ## 4.0.1
 
 ### Patch Changes

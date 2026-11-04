@@ -413,7 +413,7 @@ export class SquareCloudBlob {
 
 	/**
 	 * A ready `S3Client` for the S3 gateway. Node.js only; requires `@aws-sdk/client-s3`.
-	 * Buckets: `public`, `private`, `legacy` (read, list, delete only).
+	 * Buckets: `public` and `private`.
 	 */
 	async s3(): Promise<S3Client> {
 		const [{ S3Client }, credentials] = await Promise.all([

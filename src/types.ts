@@ -110,7 +110,8 @@ export type ObjectInfo = {
 	content_disposition: string | null;
 	original_name: string | null;
 	metadata: Record<string, string>;
-	legacy: boolean;
+	/** @deprecated No longer sent by the API (always `undefined`). */
+	legacy?: boolean;
 };
 
 export type DownloadUrlOptions = {

@@ -229,7 +229,7 @@ const s3 = await blob.s3();
 await s3.send(new ListObjectsV2Command({ Bucket: "public" }));
 ```
 
-Buckets: `public`, `private` and `legacy` (read, list and delete only). For other clients, `blob.s3Credentials()` returns the `endpoint`, `region` (`auto`), key pair, buckets and access; use path-style addressing. The pair needs an API key (`UPLOAD_TOKEN_NOT_ALLOWED` for an upload token, `LEGACY_API_KEY` for an old key), is fetched once per client, and dies when the key is revoked or rotated.
+Buckets: `public` and `private`. For other clients, `blob.s3Credentials()` returns the `endpoint`, `region` (`auto`), key pair, buckets and access; use path-style addressing. The pair needs an API key (`UPLOAD_TOKEN_NOT_ALLOWED` for an upload token, `LEGACY_API_KEY` for an old key), is fetched once per client, and dies when the key is revoked or rotated.
 
 ### Account stats
 

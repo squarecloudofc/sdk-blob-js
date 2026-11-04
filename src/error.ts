@@ -27,6 +27,7 @@ export type BlobErrorCode =
 	// Objects
 	| "OBJECT_NOT_FOUND"
 	| "OBJECT_ALREADY_EXISTS"
+	/** @deprecated No longer emitted: headers change in place on every object. */
 	| "OBJECT_IS_LEGACY"
 	| "CHECKSUM_MISMATCH"
 	| "INVALID_CONTENT_TYPE"
