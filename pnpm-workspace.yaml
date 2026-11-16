@@ -1,3 +1,6 @@
 allowBuilds:
   # The JS API finds the platform binary without the postinstall check
   esbuild: false
+overrides:
+  'shell-quote': '^1.11.0'
+  'launch-editor': '^2.14.2'
