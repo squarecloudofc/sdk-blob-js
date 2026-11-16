@@ -1,3 +1,27 @@
+/**
+ * Official JavaScript SDK for Square Cloud Blob Storage.
+ *
+ * Create a client with your API key and call Blob Storage through its methods:
+ *
+ * ```js
+ * import { SquareCloudBlob } from "@squarecloud/blob";
+ *
+ * const blob = new SquareCloudBlob(process.env.SQUARECLOUD_API_KEY);
+ *
+ * const { id, url } = await blob.put("./photo.png", { name: "photo", prefix: "avatars" });
+ *
+ * for await (const object of blob.list({ prefix: "avatars/" })) {
+ *   console.log(object.id, object.size);
+ * }
+ * ```
+ *
+ * In a browser, upload with a short-lived upload token that your server mints
+ * with {@link SquareCloudBlob.uploadTokens}, and never with the API key. When
+ * Blob Storage refuses a call, the SDK throws a {@link SquareCloudBlobError}
+ * with the HTTP status and the error code.
+ *
+ * @packageDocumentation
+ */
 import type { S3Client } from "@aws-sdk/client-s3";
 import { SquareCloudBlobError } from "./error.ts";
 import type {
@@ -28,9 +52,10 @@ import type {
 
 const BASE_URL = "https://blob.squarecloud.app/v1/";
 
-// Node-only modules (put() with a File or Blob needs neither). A const specifier
-// keeps webpack, esbuild and Vite from resolving them at build time, and the
-// .catch() on each import() makes it an optional dependency for Metro
+// Modules that only s3() and file paths load, so put() with a File or Blob needs
+// neither. A const specifier keeps webpack, esbuild and Vite from resolving them
+// at build time, and the .catch() on each import() makes Metro treat them as
+// optional.
 const S3_MODULE = "@aws-sdk/client-s3";
 const FS_MODULE = "node:fs";
 
@@ -41,28 +66,69 @@ type RequestOptions = {
 	headers?: Record<string, string>;
 };
 
-/** Above this size `put()` switches to a chunked upload (simple uploads stop at 100 MB). */
+// Above this size put() switches to a chunked upload. A single request is
+// capped at 100 MiB, so this leaves room for the multipart envelope.
 const CHUNKED_THRESHOLD = 90 * 1024 * 1024;
 const PART_SIZE = 16 * 1024 * 1024;
-/** A 7th concurrent part fails with TOO_MANY_CONCURRENT_CHUNKS. */
+// The service refuses a 7th part in flight with TOO_MANY_CONCURRENT_CHUNKS.
 const PART_CONCURRENCY = 6;
 
+/** Options for the {@link SquareCloudBlob} constructor. */
 export type SquareCloudBlobOptions = {
 	/**
-	 * Retries network errors and 5xx on GET and chunked parts only; never a 429
-	 * except TOO_MANY_CONCURRENT_CHUNKS on a part (default 2).
+	 * How many times a failed call is sent again before its error is thrown. The
+	 * default is 2, and 0 turns retries off.
+	 *
+	 * @remarks
+	 * Only calls that are safe to repeat are retried. Reads and the parts of a
+	 * chunked upload are retried after a network error or a 5xx response. A part
+	 * refused with 429 `TOO_MANY_CONCURRENT_CHUNKS` is also sent again. No other
+	 * 429 is retried, and every other call gets one attempt. The wait before a
+	 * retry doubles from 0.5 seconds up to 8 seconds, and random jitter shortens
+	 * it by up to half.
 	 */
 	maxRetries?: number;
 };
 
+/**
+ * Client for Square Cloud Blob Storage.
+ *
+ * Each object has an opaque `id`. Store it as returned, and never build or
+ * parse it. Making an object public or private, or changing its expiration,
+ * gives it a new id, so always replace a stored id with the one a call returns.
+ * Use the `url` of a result instead of building URLs.
+ *
+ * @example
+ * ```js
+ * import { SquareCloudBlob } from "@squarecloud/blob";
+ *
+ * const blob = new SquareCloudBlob(process.env.SQUARECLOUD_API_KEY);
+ * const { id } = await blob.put("./report.pdf", { name: "report", private: true });
+ * const { url } = await blob.downloadUrl(id, { expires: 600 });
+ * ```
+ */
 export class SquareCloudBlob {
 	private readonly credential: string;
 	private readonly maxRetries: number;
 	private s3CredentialsCache?: Promise<S3Credentials>;
 
 	/**
-	 * @param credential - An API key (`userID-secret`), or an upload token
-	 * (`squp_...`) that can only call `put()`.
+	 * Creates a client that authenticates every call with `credential`.
+	 *
+	 * @param credential - An API key from your Square Cloud account, or an upload
+	 * token (`squp_...`) from {@link SquareCloudBlob.uploadTokens}. An upload token
+	 * can only call {@link SquareCloudBlob.put}, and every other method throws 403
+	 * `UPLOAD_TOKEN_NOT_ALLOWED`.
+	 * @param options - Client options. See {@link SquareCloudBlobOptions}.
+	 *
+	 * @remarks
+	 * Never send an API key to a browser. Mint an upload token on your server
+	 * instead.
+	 *
+	 * @example
+	 * ```js
+	 * const blob = new SquareCloudBlob(process.env.SQUARECLOUD_API_KEY, { maxRetries: 2 });
+	 * ```
 	 */
 	constructor(credential: string, options: SquareCloudBlobOptions = {}) {
 		this.credential = credential;
@@ -77,7 +143,8 @@ export class SquareCloudBlob {
 		const url = new URL(path, BASE_URL);
 		for (const [key, value] of Object.entries(query)) {
 			if (value === undefined || value === null) continue;
-			// Booleans go as "true"/"false"; `false` is meaningful (private, overwrite...)
+			// Booleans are sent as "true" or "false", because `false` is meaningful
+			// for options such as private and overwrite.
 			url.searchParams.set(
 				key,
 				typeof value === "object" ? JSON.stringify(value) : String(value),
@@ -118,12 +185,16 @@ export class SquareCloudBlob {
 				const error = new SquareCloudBlobError(
 					response.status,
 					code ?? "UNKNOWN_ERROR",
-					message,
+					message ??
+						(code
+							? undefined
+							: `Blob Storage answered HTTP ${response.status} without an error code, which usually means a proxy or gateway answered instead. Try again later, and check your network if it keeps happening.`),
 					extra,
 				);
-				// Never a 429 (RATE_LIMITED can be a 30-minute account block), except
-				// TOO_MANY_CONCURRENT_CHUNKS: a slot refusal before the part is read, e.g. a part
-				// resent after a network error while the server still holds its slot.
+				// A 429 is never retried, because RATE_LIMITED can be a 30-minute account
+				// block. The exception is TOO_MANY_CONCURRENT_CHUNKS, a slot refusal sent
+				// before the part is read. It happens, for example, when a part is resent
+				// after a network error while the server still holds its slot.
 				// ponytail: shares the maxRetries budget; a dedicated one if parallel large uploads matter
 				const busy = code === "TOO_MANY_CONCURRENT_CHUNKS";
 				if (
@@ -135,7 +206,8 @@ export class SquareCloudBlob {
 				}
 			}
 
-			// No Retry-After header exists: exponential backoff with jitter, capped at 8s
+			// The service sends no Retry-After header, so the wait is an exponential
+			// backoff with jitter, capped at 8 seconds.
 			const delay = Math.min(8_000, 500 * 2 ** attempt);
 			await new Promise((resolve) =>
 				setTimeout(resolve, delay * (0.5 + Math.random() / 2)),
@@ -144,15 +216,51 @@ export class SquareCloudBlob {
 	}
 
 	/**
-	 * Uploads a file. Files above ~90 MB go through a chunked upload (up to
-	 * 10 GiB, 6 parts in parallel); a failed chunked upload is aborted.
+	 * Uploads a file and returns the stored object.
 	 *
-	 * The returned `id` is opaque: store it as-is. Use `url` from the result
-	 * (`null` for private objects) instead of building URLs.
+	 * A file up to 90 MiB is sent in one request. A larger file, up to 10 GiB, is
+	 * sent as a chunked upload in 16 MiB parts, 6 at a time. If the chunked upload
+	 * fails, the SDK lets the parts in flight finish and then aborts it.
+	 *
+	 * @param file - A path to a file in Node.js, a `Blob` or `File`, or bytes. A
+	 * path is streamed from disk and never read into memory.
+	 * @param options - The name, prefix, visibility and other settings of the
+	 * object. `name` is required unless the upload token fixes it. See
+	 * {@link PutOptions}.
+	 * @returns The stored object. Store its `id` as returned, and use its `url`,
+	 * which is `null` for a private object.
+	 *
+	 * @throws {SquareCloudBlobError} 409 `OBJECT_ALREADY_EXISTS` when `overwrite`
+	 * is `false` and the name is taken. Pass `overwrite: true` to replace the
+	 * object, or choose another name.
+	 * @throws {SquareCloudBlobError} 400 `FILE_TOO_SMALL` for a file under 512
+	 * bytes, and 413 `FILE_TOO_LARGE` for a file above the limit of a rule or an
+	 * upload token.
+	 * @throws {SquareCloudBlobError} 403 `STORAGE_QUOTA_EXCEEDED` when the file
+	 * does not fit your storage quota. Delete objects or upgrade your plan.
+	 * @throws {SquareCloudBlobError} 401 `PERMISSION_DENIED` when the account has
+	 * no active plan, and 403 `UPGRADE_REQUIRED` for an option your plan lacks,
+	 * such as `metadata` below Pro.
+	 * @throws {SquareCloudBlobError} 429 `RATE_LIMITED` past the upload rate
+	 * limit, which is one upload a second below Pro. Wait for the window to pass
+	 * before you try again.
+	 * @throws {SquareCloudBlobError} 503 `STORAGE_UNAVAILABLE` while storage is
+	 * briefly unreachable. Run the whole `put()` again after about 10 seconds.
+	 * @throws {Error} When the path cannot be opened in Node.js, or for any path
+	 * outside Node.js.
+	 *
+	 * @remarks
+	 * With `overwrite: false`, a chunked upload checks the name with
+	 * {@link SquareCloudBlob.info} before it sends any part. The check costs one
+	 * request from your account's rate limit and needs the `blob:read` scope. If
+	 * the check gets a 429, the SDK aborts the upload and throws that error. When
+	 * the check cannot run, the service still refuses a taken name when the
+	 * upload completes, and the SDK aborts the upload. With an upload token, `overwrite` has no effect,
+	 * because the token decides whether its upload can replace an object.
 	 *
 	 * @example
 	 * ```js
-	 * const { id, url } = await blob.put("photo.png", { name: "photo", prefix: "avatars" });
+	 * const { id, url } = await blob.put("./photo.png", { name: "photo", prefix: "avatars" });
 	 * ```
 	 */
 	async put(file: FileInput, options: PutOptions = {}): Promise<PutResult> {
@@ -172,8 +280,9 @@ export class SquareCloudBlob {
 			return this.request("POST", "objects", { query, body: form });
 		}
 
-		const { upload, chunk } = await this.request<{
+		const { upload, id, chunk } = await this.request<{
 			upload: string;
+			id: string;
 			chunk: { max_size: number; max_parts: number };
 		}>("POST", "objects/chunked", {
 			query: {
@@ -207,6 +316,32 @@ export class SquareCloudBlob {
 		};
 
 		try {
+			// The server enforces overwrite: false only when the upload completes, so the
+			// name is checked first and a taken name fails before any part is sent. A 429
+			// aborts, because the parts skip the rate limit but completing does not. Any
+			// other info() failure, such as a 404 or a missing blob:read, skips the check.
+			// There is no check where it cannot matter. An upload token's own settings
+			// decide overwrite and the server ignores ours, and a hashed name (private or
+			// security_hash) is never taken.
+			if (
+				query.overwrite === false &&
+				!query.private &&
+				!query.security_hash &&
+				!this.credential.startsWith("squp_") &&
+				(await this.info(id).then(
+					() => true,
+					(error) => {
+						if (error?.status === 429) throw error;
+						return false;
+					},
+				))
+			) {
+				throw new SquareCloudBlobError(
+					409,
+					"OBJECT_ALREADY_EXISTS",
+					"An object with this name already exists, so the upload was aborted before any part was sent. Pass overwrite: true to replace it, or choose another name.",
+				);
+			}
 			// Every worker settles before the abort, so no part lands after it
 			await Promise.all(
 				Array.from({ length: Math.min(PART_CONCURRENCY, parts) }, worker),
@@ -214,7 +349,8 @@ export class SquareCloudBlob {
 			if (failure) throw failure.error;
 			return await this.request("PATCH", "objects/chunked", { json: handle });
 		} catch (error) {
-			// ponytail: always abort (frees one of the 32 open-upload slots); expose resume (status/open) when a caller needs to retry a multi-GB complete
+			// Always abort, a 409 OBJECT_ALREADY_EXISTS at complete included: frees one of the 32 open-upload slots.
+			// ponytail: the parts are lost; expose resume (status/open) when a caller needs to retry a multi-GB complete
 			await this.request("DELETE", "objects/chunked", { json: handle }).catch(
 				() => {},
 			);
@@ -222,17 +358,48 @@ export class SquareCloudBlob {
 		}
 	}
 
-	/** Fetches one page of objects. Use this for `folders` or manual pagination. */
+	/**
+	 * Fetches one page of objects.
+	 *
+	 * Use it to list folders with `delimiter: "/"`, or to paginate by hand. Pass
+	 * the page's `continuationToken` as `cursor` to fetch the next page. To walk
+	 * every object, use {@link SquareCloudBlob.list}.
+	 *
+	 * @param options - Filters and the cursor. See {@link ListOptions}.
+	 * @returns The objects on the page, the folders when `delimiter` is set, and
+	 * the cursor of the next page, which is absent on the last page.
+	 *
+	 * @throws {SquareCloudBlobError} 400 `INVALID_CONTINUATION_TOKEN` when the
+	 * cursor did not come from a previous page. Start again without a cursor.
+	 * @throws {SquareCloudBlobError} 400 `PREFIX_REQUIRED` when the API key is
+	 * restricted to several prefixes. Pass one of them as `prefix`.
+	 * @throws {SquareCloudBlobError} 429 `RATE_LIMITED` past 30 pages every 30
+	 * seconds.
+	 */
 	listPage(options: ListOptions = {}) {
 		return this.request<ListPage>("GET", "objects", { query: options });
 	}
 
 	/**
-	 * Iterates over every object, following the cursor. Order is not guaranteed.
+	 * Iterates over every object, fetching pages as it goes.
+	 *
+	 * The order of objects is not guaranteed.
+	 *
+	 * @param options - Filters. See {@link ListOptions}.
+	 * @returns An async iterator over the objects.
+	 *
+	 * @throws {SquareCloudBlobError} The errors of {@link SquareCloudBlob.listPage},
+	 * while iterating.
+	 *
+	 * @remarks
+	 * Each page is one request, and listing allows 30 requests every 30 seconds.
+	 * A large account can reach that limit, so pass a `prefix` when you can.
 	 *
 	 * @example
 	 * ```js
-	 * for await (const object of blob.list({ prefix: "avatars/" })) console.log(object.id);
+	 * for await (const object of blob.list({ prefix: "avatars/" })) {
+	 *   console.log(object.id, object.size);
+	 * }
 	 * ```
 	 */
 	async *list(
@@ -246,7 +413,17 @@ export class SquareCloudBlob {
 		} while (cursor);
 	}
 
-	/** Details of one object: size, type, headers, metadata, expiration. */
+	/**
+	 * Returns the details of one object, such as its size, Content-Type, headers,
+	 * metadata and expiration.
+	 *
+	 * @param id - The object id.
+	 * @returns The details of the object.
+	 *
+	 * @throws {SquareCloudBlobError} 404 `OBJECT_NOT_FOUND` when the object does
+	 * not exist, and 400 `INVALID_OBJECT` when the id is not one of your objects.
+	 * @throws {SquareCloudBlobError} 429 `RATE_LIMITED` past 60 calls a minute.
+	 */
 	info(id: string) {
 		return this.request<ObjectInfo>("GET", "objects/info", {
 			query: { object: id },
@@ -254,10 +431,31 @@ export class SquareCloudBlob {
 	}
 
 	/**
-	 * A download link. Public objects get their permanent CDN URL; private ones,
-	 * or any call with `disposition`/`filename`, get a temporary link (max 24 h)
-	 * that cannot be revoked. For revocable, password or download-capped links,
-	 * use `shares.create()`.
+	 * Returns a link to download an object.
+	 *
+	 * A public object returns its permanent URL on the global edge CDN. A private
+	 * object, or any call with `disposition` or `filename`, returns a temporary
+	 * link that lives `expires` seconds, at most 24 hours.
+	 *
+	 * @param id - The object id.
+	 * @param options - The lifetime of a temporary link, and how browsers handle
+	 * the file. See {@link DownloadUrlOptions}.
+	 * @returns The link. Its `expires_at` is set for a temporary link and `null`
+	 * for a permanent one.
+	 *
+	 * @throws {SquareCloudBlobError} 401 `PERMISSION_DENIED` when a temporary link
+	 * is needed and the account has no active plan.
+	 * @throws {SquareCloudBlobError} 404 `OBJECT_NOT_FOUND` when the object does
+	 * not exist.
+	 * @throws {SquareCloudBlobError} 429 `RATE_LIMITED` past 60 calls a minute.
+	 *
+	 * @remarks
+	 * A temporary link cannot be revoked on its own. It stops working early when
+	 * the API key that created it is revoked, regenerated or expires, when the
+	 * session that created it logs out, and when the object is overwritten,
+	 * moved, deleted, or made public or private. For links that you can revoke
+	 * one by one, protect with a password or cap by downloads, use
+	 * {@link SquareCloudBlob.shares}.
 	 */
 	downloadUrl(id: string, options: DownloadUrlOptions = {}) {
 		return this.request<DownloadUrl>("GET", "objects/download", {
@@ -266,9 +464,29 @@ export class SquareCloudBlob {
 	}
 
 	/**
-	 * Changes visibility, expiration, cache, disposition or metadata of up to 50
-	 * objects. Changing visibility or expiration CHANGES THE ID: replace your
-	 * stored id with `result.id`. Each result reports its own success.
+	 * Changes the visibility, expiration, cache, disposition or metadata of one
+	 * object or of up to 50.
+	 *
+	 * Making an object public or private, or changing its expiration, gives it a
+	 * new id. Replace your stored id with the `id` of its result.
+	 *
+	 * @param ids - One object id, or an array of up to 50.
+	 * @param changes - What to change. A `null` value removes a setting. See
+	 * {@link ObjectChanges}.
+	 * @returns One result per object, always as an array. Each result reports its
+	 * own success in `ok`, so check it before you read `id`.
+	 *
+	 * @throws {SquareCloudBlobError} 400 `TOO_MANY_OBJECTS` for more than 50 ids,
+	 * and 400 `NOTHING_TO_UPDATE` when `changes` is empty.
+	 * @throws {SquareCloudBlobError} 403 `UPGRADE_REQUIRED` when your plan lacks a
+	 * requested setting, such as `metadata` below Pro or an expiration under 7
+	 * days below Enterprise.
+	 *
+	 * @remarks
+	 * A failure on one object does not throw. Its result has `ok: false` and a
+	 * `code`. Without an active plan, only making objects private works, and any
+	 * other change reports `PERMISSION_DENIED`. Making a private object public
+	 * also needs the `blob:read` scope.
 	 *
 	 * @example
 	 * ```js
@@ -287,11 +505,28 @@ export class SquareCloudBlob {
 	}
 
 	/**
-	 * Deletes immediately and permanently (there is no trash). A single id
-	 * throws `OBJECT_NOT_FOUND` when missing; an array (up to 100) reports
-	 * each id instead.
+	 * Deletes one object immediately and permanently. There is no trash.
+	 *
+	 * @param id - The object id.
+	 *
+	 * @throws {SquareCloudBlobError} 404 `OBJECT_NOT_FOUND` when the object does
+	 * not exist.
+	 * @throws {SquareCloudBlobError} 403 `PREFIX_NOT_ALLOWED` when the API key is
+	 * restricted to other prefixes.
+	 * @throws {SquareCloudBlobError} 500 `DELETE_FAILED` when storage failed and
+	 * the object may still exist. Try again.
 	 */
 	delete(id: string): Promise<void>;
+	/**
+	 * Deletes up to 100 objects immediately and permanently. There is no trash.
+	 *
+	 * @param ids - Up to 100 object ids.
+	 * @returns The ids that were deleted, the ids that did not exist, and the ids
+	 * that failed, each with its code. A missing object or a failure on one
+	 * object does not throw.
+	 *
+	 * @throws {SquareCloudBlobError} 400 `TOO_MANY_OBJECTS` for more than 100 ids.
+	 */
 	delete(ids: string[]): Promise<DeleteManyResult>;
 	async delete(ids: string | string[]): Promise<unknown> {
 		if (typeof ids === "string") {
@@ -323,8 +558,36 @@ export class SquareCloudBlob {
 	}
 
 	/**
-	 * Copies an object server-side (counts toward the quota). `destination.name`
-	 * has no extension: the copy keeps the source's.
+	 * Copies an object inside Blob Storage, without downloading it.
+	 *
+	 * The copy counts toward your storage quota and keeps the extension of the
+	 * source. It lands at the root unless `destination.prefix` says otherwise.
+	 *
+	 * @param source - The id of the object to copy.
+	 * @param destination - The name, prefix, visibility and expiration of the
+	 * copy. See {@link CopyDestination}.
+	 * @param options - Pass `overwrite: true` to replace an existing object at the
+	 * destination, or `move: true` to move the object, as
+	 * {@link SquareCloudBlob.move} does.
+	 * @returns The new object, the id of the source, and whether an existing
+	 * object was replaced.
+	 *
+	 * @throws {SquareCloudBlobError} 409 `OBJECT_ALREADY_EXISTS` when the
+	 * destination is taken. Pass `overwrite: true` to replace it.
+	 * @throws {SquareCloudBlobError} 404 `OBJECT_NOT_FOUND` when the source does
+	 * not exist, and 400 `SAME_OBJECT` when the destination is the source.
+	 * @throws {SquareCloudBlobError} 403 `MISSING_SCOPE` when the API key lacks
+	 * `blob:read`, which a copy needs on top of `blob:write`. 403
+	 * `PREFIX_NOT_ALLOWED` when the source or the destination is outside the
+	 * prefixes of the API key.
+	 * @throws {SquareCloudBlobError} 403 `STORAGE_QUOTA_EXCEEDED` when the copy
+	 * does not fit your storage quota, and 401 `PERMISSION_DENIED` when the
+	 * account has no active plan.
+	 *
+	 * @remarks
+	 * The rules of the destination prefix apply as they do to an upload, so a
+	 * disallowed extension fails with 400 `FILE_TYPE_NOT_ALLOWED` and a file above
+	 * its `max_size` with 413 `FILE_TOO_LARGE`.
 	 */
 	copy(
 		source: string,
@@ -336,7 +599,23 @@ export class SquareCloudBlob {
 		});
 	}
 
-	/** Moves or renames an object (does not count toward the quota). */
+	/**
+	 * Moves or renames an object.
+	 *
+	 * Unlike a copy, a move does not count toward your storage quota, because the
+	 * source is removed. The object lands at the root unless `destination.prefix`
+	 * says otherwise.
+	 *
+	 * @param source - The id of the object to move.
+	 * @param destination - The new name, prefix, visibility and expiration. See
+	 * {@link CopyDestination}.
+	 * @param options - Pass `overwrite: true` to replace an existing object at the
+	 * destination.
+	 * @returns The moved object. Replace your stored id with its `id`.
+	 *
+	 * @throws {SquareCloudBlobError} The errors of {@link SquareCloudBlob.copy},
+	 * except `STORAGE_QUOTA_EXCEEDED`.
+	 */
 	move(
 		source: string,
 		destination: CopyDestination,
@@ -345,17 +624,60 @@ export class SquareCloudBlob {
 		return this.copy(source, destination, { ...options, move: true });
 	}
 
-	/** Account usage. `billing` is an estimate only: the excess is never charged. */
+	/**
+	 * Returns the storage usage of the account, the storage your plan includes,
+	 * and an estimate of the cost of usage above it.
+	 *
+	 * @returns The object count and bytes stored, the bytes your plan includes,
+	 * this month's daily average and a cost estimate. The estimate is not
+	 * charged.
+	 *
+	 * @throws {SquareCloudBlobError} 403 `PREFIX_NOT_ALLOWED` when the API key is
+	 * restricted to prefixes. Account stats need a key for the whole account.
+	 * @throws {SquareCloudBlobError} 429 `RATE_LIMITED` past 20 calls a minute.
+	 *
+	 * @remarks
+	 * The service caches the answer for up to 60 seconds.
+	 */
 	stats() {
 		return this.request<Stats>("GET", "account/stats");
 	}
 
-	/** Per-prefix rules (visibility, expiration, size, extensions, lifecycle). */
+	/**
+	 * Per-prefix rules. A rule sets the default visibility, expiration and
+	 * Cache-Control of new objects under its prefix, limits their size and
+	 * extensions, and can delete them after a number of days.
+	 */
 	readonly rules = {
+		/**
+		 * Returns the saved rules.
+		 *
+		 * @returns Every rule, with when it was saved and, for a rule that deletes
+		 * objects, when deletion starts.
+		 */
 		get: async () =>
 			(await this.request<{ rules: SavedRule[] }>("GET", "account/settings"))
 				.rules,
-		/** Replaces the WHOLE list. Lifecycle deletion starts 24 h after saving. */
+		/**
+		 * Replaces every rule with `rules` and returns the saved list.
+		 *
+		 * @param rules - The full list of rules. A rule left out is deleted, so an
+		 * empty array removes them all. See {@link Rule}.
+		 * @returns The saved rules.
+		 *
+		 * @throws {SquareCloudBlobError} 400 `INVALID_RULE_<FIELD>` or
+		 * `DUPLICATE_RULE_PREFIX` for an invalid rule. The prefix of the rule is in
+		 * `extra.prefix`.
+		 * @throws {SquareCloudBlobError} 403 `UPGRADE_REQUIRED` past the number of
+		 * rules your plan allows, or for a setting it lacks.
+		 * @throws {SquareCloudBlobError} 403 `PREFIX_NOT_ALLOWED` when the API key is
+		 * restricted to prefixes. Rules need a key for the whole account.
+		 *
+		 * @remarks
+		 * Plans allow up to 5 rules, Pro allows 10 and Enterprise allows 20. A rule
+		 * with `delete_after_days` starts deleting 24 hours after it is saved, and
+		 * saving it again unchanged keeps that date.
+		 */
 		set: async (rules: Rule[]) =>
 			(
 				await this.request<{ rules: SavedRule[] }>("PUT", "account/settings", {
@@ -364,41 +686,111 @@ export class SquareCloudBlob {
 			).rules,
 	};
 
+	/** Upload tokens, which let a browser upload without your API key. */
 	readonly uploadTokens = {
 		/**
-		 * Mints a short-lived token on your server for a browser to upload with,
-		 * so the API key never leaves the server.
+		 * Mints a short-lived upload token on your server for a browser to upload
+		 * with, so the API key never leaves the server.
+		 *
+		 * The token can only call {@link SquareCloudBlob.put}. Every option it is
+		 * minted with is fixed, and the browser cannot change it.
+		 *
+		 * @param options - What the token fixes, and how long and how many times it
+		 * can be used. See {@link UploadTokenOptions}.
+		 * @returns The token, when it expires and how many uploads it allows.
+		 *
+		 * @throws {SquareCloudBlobError} 403 `PREFIX_NOT_ALLOWED` when an API key
+		 * restricted to prefixes asks for a prefix outside them, and 403
+		 * `UPGRADE_REQUIRED` for an option your plan lacks.
+		 * @throws {SquareCloudBlobError} 400 `UPLOAD_TOKEN_TOO_LARGE` when the token
+		 * would carry too many settings. Metadata is the usual cause.
+		 * @throws {SquareCloudBlobError} 401 `PERMISSION_DENIED` when the account has
+		 * no active plan.
+		 *
+		 * @remarks
+		 * Revoking or regenerating the API key that minted a token stops the token,
+		 * and so does logging out the session that minted it.
 		 *
 		 * @example
 		 * ```js
-		 * // server
-		 * const { token } = await blob.uploadTokens.create({ prefix: "avatars/", security_hash: true });
-		 * // browser
-		 * await new SquareCloudBlob(token).put(fileInput.files[0], { name: "avatar" });
+		 * // Server
+		 * const { token } = await blob.uploadTokens.create({ prefix: "avatars/", max_size: 5 * 1024 * 1024 });
+		 *
+		 * // Browser
+		 * await new SquareCloudBlob(token).put(input.files[0], { name: "avatar" });
 		 * ```
 		 */
 		create: (options: UploadTokenOptions = {}) =>
 			this.request<UploadToken>("POST", "upload-tokens", { json: options }),
 	};
 
+	/**
+	 * Share links. A share is a link to one object that you can revoke, with an
+	 * expiration, an optional password and an optional download cap.
+	 */
 	readonly shares = {
 		/**
-		 * Creates a revocable share link. If `object_is_public` comes back `true`,
-		 * the password, download cap and expiration do NOT protect the file: it
-		 * stays reachable at its public URL. Make it private first with `update()`.
+		 * Creates a share link to an object.
+		 *
+		 * @param object - The id of the object to share.
+		 * @param options - How long the link lives, how many downloads it allows
+		 * and its password. See {@link ShareOptions}.
+		 * @returns The share. Check `object_is_public` before you rely on its
+		 * protections.
+		 *
+		 * @throws {SquareCloudBlobError} 404 `OBJECT_NOT_FOUND` when the object does
+		 * not exist.
+		 * @throws {SquareCloudBlobError} 403 `UPGRADE_REQUIRED` for a password below
+		 * Pro, and 401 `PERMISSION_DENIED` when the account has no active plan.
+		 * @throws {SquareCloudBlobError} 409 `TOO_MANY_SHARES` past 1000 active
+		 * links. Revoke some first.
+		 *
+		 * @remarks
+		 * When `object_is_public` is `true`, the link redirects to the object's
+		 * public URL, so the password, download cap and expiration do not protect
+		 * the file. Make the object private with {@link SquareCloudBlob.update}
+		 * before you share it. A link stops working when the object is moved,
+		 * deleted, overwritten, or made public or private.
 		 */
 		create: (object: string, options: ShareOptions = {}) =>
 			this.request<Share>("POST", "shares", { json: { object, ...options } }),
+		/**
+		 * Returns the active share links.
+		 *
+		 * @returns Every active share. An API key restricted to prefixes sees only
+		 * the shares of objects inside them.
+		 */
 		list: async () =>
 			(await this.request<{ shares: ListedShare[] }>("GET", "shares")).shares,
+		/**
+		 * Revokes a share link at once.
+		 *
+		 * @param id - The share id, from {@link Share} or {@link ListedShare}.
+		 *
+		 * @throws {SquareCloudBlobError} 404 `SHARE_NOT_FOUND` when no active share
+		 * has this id.
+		 */
 		revoke: async (id: string) => {
 			await this.request("DELETE", "shares", { json: { id } });
 		},
 	};
 
 	/**
-	 * The S3 key pair of this API key (API keys only). Deterministic per key, so
-	 * it is fetched once per client; revoking or rotating the key kills it.
+	 * Returns the S3 key pair of this API key, for use with any S3 client.
+	 *
+	 * The pair is the same on every call, so the client fetches it once and
+	 * reuses it. It stops working when the API key is revoked, regenerated or
+	 * expires.
+	 *
+	 * @returns The key pair, the endpoint, region and buckets to configure, and
+	 * what the pair can read and write.
+	 *
+	 * @throws {SquareCloudBlobError} 403 `UPLOAD_TOKEN_NOT_ALLOWED` when the client
+	 * uses an upload token. S3 needs an API key.
+	 * @throws {SquareCloudBlobError} 429 `RATE_LIMITED` past 10 calls an hour.
+	 *
+	 * @remarks
+	 * A failed call is not cached, so the next call tries again.
 	 */
 	s3Credentials() {
 		this.s3CredentialsCache ??= this.request<S3Credentials>(
@@ -412,14 +804,35 @@ export class SquareCloudBlob {
 	}
 
 	/**
-	 * A ready `S3Client` for the S3 gateway. Node.js only; requires `@aws-sdk/client-s3`.
-	 * Buckets: `public` and `private`.
+	 * Returns an `S3Client` set up for the Blob Storage S3 gateway, which has two
+	 * buckets, `public` and `private`.
+	 *
+	 * It needs the optional `@aws-sdk/client-s3` package and an API key, so use
+	 * it on a server such as Node.js, never in a browser.
+	 *
+	 * @returns A ready `S3Client` from `@aws-sdk/client-s3`.
+	 *
+	 * @throws {Error} When `@aws-sdk/client-s3` cannot be loaded. Install it, or
+	 * pass {@link SquareCloudBlob.s3Credentials} to another S3 client.
+	 * @throws {SquareCloudBlobError} The errors of
+	 * {@link SquareCloudBlob.s3Credentials}.
+	 *
+	 * @example
+	 * ```js
+	 * import { ListObjectsV2Command } from "@aws-sdk/client-s3";
+	 *
+	 * const s3 = await blob.s3();
+	 * await s3.send(new ListObjectsV2Command({ Bucket: "public" }));
+	 * ```
 	 */
 	async s3(): Promise<S3Client> {
 		const [{ S3Client }, credentials] = await Promise.all([
 			import(/* webpackIgnore: true */ /* @vite-ignore */ S3_MODULE).catch(
 				(cause) => {
-					throw new Error("s3() needs @aws-sdk/client-s3 installed", { cause });
+					throw new Error(
+						"s3() needs the optional @aws-sdk/client-s3 package, which could not be loaded. Install it with npm install @aws-sdk/client-s3, or pass s3Credentials() to another S3 client.",
+						{ cause },
+					);
 				},
 			) as Promise<typeof import("@aws-sdk/client-s3")>,
 			this.s3Credentials(),
@@ -446,16 +859,22 @@ function parseJson(text: string) {
 
 async function toBlob(file: FileInput): Promise<Blob> {
 	if (typeof file === "string") {
-		// Only file paths reach node:fs; the Blob streams from disk
+		// Only file paths load node:fs, and the Blob it returns streams from disk.
 		const { openAsBlob }: typeof import("node:fs") = await import(
 			/* webpackIgnore: true */ /* @vite-ignore */ FS_MODULE
 		).catch((cause) => {
-			throw new Error("File paths need Node.js", { cause });
+			throw new Error(
+				"File paths can only be uploaded in Node.js. Pass a Blob, a File or bytes instead.",
+				{ cause },
+			);
 		});
 		try {
 			return (await openAsBlob(file)) as Blob;
 		} catch (cause) {
-			throw new Error(`Cannot open file: ${file}`, { cause });
+			throw new Error(
+				`Cannot open the file "${file}". Check that the path exists and that this process can read it.`,
+				{ cause },
+			);
 		}
 	}
 	return file instanceof Blob ? file : new Blob([file as BlobPart]);

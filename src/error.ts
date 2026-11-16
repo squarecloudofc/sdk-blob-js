@@ -1,12 +1,21 @@
-/** Error codes emitted by the Square Cloud Blob API. */
+/**
+ * Error codes that Blob Storage returns, plus `UNKNOWN_ERROR`, which the SDK sets
+ * when a response carries no code.
+ *
+ * @remarks
+ * Validation errors are 400 with a code of the form `INVALID_<FIELD>`, such as
+ * `INVALID_OBJECT_NAME`. The union also accepts any other string, so a code the
+ * service adds later still type-checks.
+ */
 export type BlobErrorCode =
-	// Global
+	// Credentials, scopes, plans and availability
 	| "ACCESS_DENIED"
-	/** @deprecated No longer emitted: the account/IP block is now `RATE_LIMITED`. */
+	/** @deprecated The service no longer sends it. An account or IP block is now `RATE_LIMITED`. */
 	| "RATE_LIMIT"
 	/**
-	 * 429, both a per-route window and the account/IP block (which can last
-	 * ~30 min). Never retried.
+	 * 429 when a call goes over a rate limit. It is used both for the limit of one
+	 * operation and for the account-wide block, which can last about 30 minutes.
+	 * The SDK never retries it.
 	 */
 	| "RATE_LIMITED"
 	| "MISSING_SCOPE"
@@ -16,18 +25,29 @@ export type BlobErrorCode =
 	| "PREFIX_NOT_ALLOWED"
 	| "PERMISSION_DENIED"
 	| "ACCOUNT_BLOCKED"
+	/**
+	 * 403 when your plan does not include what the call asked for. The message
+	 * names the limit or feature and the plan that includes it.
+	 */
 	| "UPGRADE_REQUIRED"
 	| "STORAGE_QUOTA_EXCEEDED"
 	| "PRIVATE_STORAGE_UNAVAILABLE"
 	| "PUBLIC_STORAGE_UNAVAILABLE"
 	| "TOO_MANY_CONCURRENT_UPLOADS"
 	| "UPLOAD_FAILED"
+	/**
+	 * 503 while storage is briefly unreachable. The service refuses object calls
+	 * in windows of about 10 seconds. The SDK retries reads and chunked upload
+	 * parts within `maxRetries`, which may not outlast the window, so try again
+	 * after about 10 seconds.
+	 */
+	| "STORAGE_UNAVAILABLE"
 	| "INTERNAL_SERVER_ERROR"
 	| "NOT_FOUND"
 	// Objects
 	| "OBJECT_NOT_FOUND"
 	| "OBJECT_ALREADY_EXISTS"
-	/** @deprecated No longer emitted: headers change in place on every object. */
+	/** @deprecated The service no longer sends it. Headers now change in place on every object. */
 	| "OBJECT_IS_LEGACY"
 	| "CHECKSUM_MISMATCH"
 	| "INVALID_CONTENT_TYPE"
@@ -47,6 +67,10 @@ export type BlobErrorCode =
 	| "PREFIX_REQUIRED"
 	| "INVALID_CONTINUATION_TOKEN"
 	// Chunked uploads
+	/**
+	 * 429 when more than 6 parts are in flight for the account. The SDK sends the
+	 * part again within `maxRetries`.
+	 */
 	| "TOO_MANY_CONCURRENT_CHUNKS"
 	| "TOO_MANY_OPEN_UPLOADS"
 	| "INVALID_UPLOAD_TOKEN"
@@ -56,7 +80,7 @@ export type BlobErrorCode =
 	| "INVALID_CHUNK_PART"
 	| "CHUNK_TOO_SMALL"
 	| "CHUNK_TOO_LARGE"
-	// Settings, tokens, shares, S3
+	// Rules, upload tokens, shares and S3
 	| "TOO_MANY_RULES"
 	| "DUPLICATE_RULE_PREFIX"
 	| "INVALID_RULES"
@@ -65,22 +89,66 @@ export type BlobErrorCode =
 	| "SHARE_NOT_FOUND"
 	| "INVALID_SHARE"
 	| "API_KEY_REQUIRED"
+	/** @deprecated The service no longer sends it. An old API key is refused with 401 `ACCESS_DENIED`, like any unknown key. */
 	| "LEGACY_API_KEY"
-	// Validation (400): INVALID_OBJECT, INVALID_OBJECT_NAME, INVALID_RULE_PREFIX, ...
+	// Validation errors (400), such as INVALID_OBJECT, INVALID_OBJECT_NAME and INVALID_RULE_PREFIX
 	| `INVALID_${string}`
-	// SDK: a non-JSON response (e.g. a proxy error page)
+	/**
+	 * Set by the SDK when a response carries no error code, such as an error page
+	 * from a proxy. `status` still holds the real HTTP status.
+	 */
 	| "UNKNOWN_ERROR"
 	| (string & {});
 
+/**
+ * Error thrown when Blob Storage refuses a call.
+ *
+ * Match on {@link SquareCloudBlobError.code} rather than on the message, which
+ * can change.
+ *
+ * @remarks
+ * A call that gets no complete response, such as a DNS failure, a reset
+ * connection or a body cut off mid-read, throws the `fetch` error itself. A
+ * batch `update()` or `delete()` reports per-object failures in its result
+ * instead of throwing.
+ *
+ * @example
+ * ```js
+ * import { SquareCloudBlobError } from "@squarecloud/blob";
+ *
+ * try {
+ *   await blob.delete(id);
+ * } catch (error) {
+ *   if (error instanceof SquareCloudBlobError && error.code === "OBJECT_NOT_FOUND") {
+ *     console.log("The object was already gone.");
+ *   } else {
+ *     throw error;
+ *   }
+ * }
+ * ```
+ */
 export class SquareCloudBlobError extends Error {
+	/** Always `"SquareCloudBlobError"`. */
 	name = "SquareCloudBlobError";
-	/** HTTP status of the response. */
+	/** The HTTP status of the response, such as 404. */
 	readonly status: number;
-	/** The API error code, e.g. `OBJECT_NOT_FOUND`. */
+	/** The error code, such as `OBJECT_NOT_FOUND`. */
 	readonly code: BlobErrorCode;
-	/** Extra fields of the error body, e.g. `prefix` on rule errors. */
+	/**
+	 * Other fields of the error body, such as `prefix` on a rule error. It is an
+	 * empty object when there are none.
+	 */
 	readonly extra: Record<string, unknown>;
 
+	/**
+	 * Creates an error. The SDK creates these for you, so you rarely need this
+	 * constructor outside tests.
+	 *
+	 * @param status - The HTTP status.
+	 * @param code - The error code.
+	 * @param message - The explanation. It defaults to `code`.
+	 * @param extra - Other fields of the error body.
+	 */
 	constructor(
 		status: number,
 		code: BlobErrorCode,
@@ -93,7 +161,14 @@ export class SquareCloudBlobError extends Error {
 		this.extra = extra;
 	}
 
-	/** Every plan refusal (limit, feature or plan) uses this code; the message says which. */
+	/**
+	 * Returns `true` when your plan does not include what the call asked for.
+	 *
+	 * @remarks
+	 * Every plan refusal uses the code `UPGRADE_REQUIRED`, and the message names
+	 * the limit or feature. An account without any active plan gets 401
+	 * `PERMISSION_DENIED` instead, for which this returns `false`.
+	 */
 	isUpgradeRequired() {
 		return this.code === "UPGRADE_REQUIRED";
 	}

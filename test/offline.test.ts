@@ -70,6 +70,23 @@ stub(() => [500, { status: "error", code: "COPY_FAILED" }]);
 await assert.rejects(blob.copy("a", { name: "b" }), { code: "COPY_FAILED" });
 assert.equal(calls.length, 1);
 
+// STORAGE_UNAVAILABLE (the storage breaker): retried on GET, then thrown with its code; never on POST
+const storageDown = () =>
+	[503, { status: "error", code: "STORAGE_UNAVAILABLE" }] as [number, unknown];
+stub(storageDown);
+await assert.rejects(blob.info("x"), (error) => {
+	assert.ok(error instanceof SquareCloudBlobError);
+	assert.equal(error.status, 503);
+	assert.equal(error.code, "STORAGE_UNAVAILABLE");
+	return true;
+});
+assert.equal(calls.length, 3);
+stub(storageDown);
+await assert.rejects(blob.put(new Uint8Array(600), { name: "a" }), {
+	code: "STORAGE_UNAVAILABLE",
+});
+assert.equal(calls.length, 1);
+
 // Network errors: retried on GET up to maxRetries, never on POST
 const offline = () => {
 	throw new TypeError("fetch failed");
@@ -136,9 +153,24 @@ await assert.rejects(blob.rules.set([{ prefix: "a/" }]), (error) => {
 });
 assert.equal(calls.length, 1);
 
-// Non-JSON error page
+// Non-JSON error page: the SDK explains it, since the service sent no message
 globalThis.fetch = async () => new Response("<html>", { status: 403 });
-await assert.rejects(blob.stats(), { code: "UNKNOWN_ERROR", status: 403 });
+await assert.rejects(blob.stats(), {
+	code: "UNKNOWN_ERROR",
+	status: 403,
+	message: /^Blob Storage answered HTTP 403 without an error code/,
+});
+
+// A path that cannot be opened names the path and keeps the original error
+await assert.rejects(blob.put("./missing-file.png", { name: "a" }), (error) => {
+	assert.ok(error instanceof Error);
+	assert.match(
+		error.message,
+		/^Cannot open the file "\.\/missing-file\.png"\./,
+	);
+	assert.ok(error.cause);
+	return true;
+});
 
 // Chunked: > 90 MB opens, sends every part once, completes without ETags
 const big = new Blob([new Uint8Array(100 * 1024 * 1024)]);
@@ -163,6 +195,11 @@ const parts = calls
 assert.deepEqual(parts, [1, 2, 3, 4, 5, 6, 7]); // 16 MiB parts
 assert.deepEqual(calls.at(-1)?.body, { upload: "h" });
 assert.equal(calls.at(-1)?.method, "PATCH");
+// No existence check unless overwrite is false
+assert.equal(
+	calls.some((c) => c.method === "GET"),
+	false,
+);
 
 // Chunked: a part is retried on network errors, 5xx and TOO_MANY_CONCURRENT_CHUNKS
 const tries: Record<string, number> = {};
@@ -210,6 +247,96 @@ assert.equal(
 	calls.some((c) => c.method === "PATCH"),
 	false,
 );
+
+// Chunked with overwrite: false: a taken name fails before any part is sent, and the upload is aborted
+stub(({ method }) =>
+	method === "POST"
+		? ok({ upload: "h", id: "pub/1/f.bin", chunk })
+		: ok({ id: "pub/1/f.bin" }),
+);
+await assert.rejects(blob.put(big, { name: "f", overwrite: false }), {
+	status: 409,
+	code: "OBJECT_ALREADY_EXISTS",
+});
+assert.deepEqual(
+	calls.map((c) => c.method),
+	["POST", "GET", "DELETE"],
+);
+assert.equal(calls[0].url.searchParams.get("overwrite"), "false");
+assert.equal(calls[1].url.pathname, "/v1/objects/info");
+assert.equal(calls[1].url.searchParams.get("object"), "pub/1/f.bin");
+assert.deepEqual(calls[2].body, { upload: "h" });
+
+// ...a free name uploads the parts, and a 409 at complete (taken meanwhile) aborts and throws it
+stub(({ method }) =>
+	method === "POST"
+		? ok({ upload: "h", id: "pub/1/f.bin", chunk })
+		: method === "GET"
+			? [404, { status: "error", code: "OBJECT_NOT_FOUND" }]
+			: method === "PATCH"
+				? [409, { status: "error", code: "OBJECT_ALREADY_EXISTS" }]
+				: ok(),
+);
+await assert.rejects(blob.put(big, { name: "f", overwrite: false }), {
+	status: 409,
+	code: "OBJECT_ALREADY_EXISTS",
+});
+assert.equal(calls.filter((c) => c.method === "PUT").length, 7);
+assert.deepEqual(
+	calls.slice(-2).map((c) => c.method),
+	["PATCH", "DELETE"],
+);
+
+// ...an upload token cannot call info(), so it skips the check instead of spending a request
+stub(({ method }) =>
+	method === "POST" ? ok({ upload: "h", id: "pub/1/f.bin", chunk }) : ok(),
+);
+await new SquareCloudBlob("squp_test").put(big, {
+	name: "f",
+	overwrite: false,
+});
+assert.equal(
+	calls.some((c) => c.method === "GET"),
+	false,
+);
+
+// ...a 429 from info() aborts before any part (they would all be sent, then refused at complete)
+stub(({ method }) =>
+	method === "POST"
+		? ok({ upload: "h", id: "pub/1/f.bin", chunk })
+		: method === "GET"
+			? [429, { status: "error", code: "RATE_LIMITED" }]
+			: ok(),
+);
+await assert.rejects(blob.put(big, { name: "f", overwrite: false }), {
+	status: 429,
+	code: "RATE_LIMITED",
+});
+assert.deepEqual(
+	calls.map((c) => c.method),
+	["POST", "GET", "DELETE"],
+);
+
+// ...a random hash in the name (private, security_hash) cannot collide: no check. An expiry
+// suffix is per minute, not random, so expire alone is still checked.
+for (const [options, checked] of [
+	[{ private: true }, false],
+	[{ security_hash: true }, false],
+	[{ expire: "30d" }, true],
+] as const) {
+	stub(({ method }) =>
+		method === "POST"
+			? ok({ upload: "h", id: "pub/1/f.bin", chunk })
+			: method === "GET"
+				? [404, { status: "error", code: "OBJECT_NOT_FOUND" }]
+				: ok(),
+	);
+	await blob.put(big, { name: "f", overwrite: false, ...options });
+	assert.equal(
+		calls.some((c) => c.method === "GET"),
+		checked,
+	);
+}
 
 // Chunked: the abort waits for the parts still in flight (none lands after it)
 const events: string[] = [];

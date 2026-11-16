@@ -23,7 +23,7 @@ jobs:
       - name: Setup node
         uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
           cache: 'pnpm'
 
       - name: Install dependencies
@@ -58,7 +58,7 @@ jobs:
       - name: Setup node
         uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
           cache: 'pnpm'
           # changesets/action v2 no longer writes .npmrc from NPM_TOKEN
           registry-url: 'https://registry.npmjs.org'
@@ -75,5 +75,8 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
 permissions:
+  # id-token: npm trusted publishing (OIDC). Without a trusted publisher on
+  # npmjs.com, the publish falls back to NPM_TOKEN.
+  id-token: write
   contents: write
   pull-requests: write

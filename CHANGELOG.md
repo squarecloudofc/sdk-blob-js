@@ -1,5 +1,35 @@
 # @squarecloud/blob
 
+## 4.2.0
+
+### Minor Changes
+
+- Chunked uploads respect `overwrite: false` before they send any part, `STORAGE_UNAVAILABLE` is a known code, and every public API is documented.
+  
+  **Changes**
+  
+  - `put()` of a file above 90 MiB with `overwrite: false` now checks the name with `info()` right after it opens the chunked upload. If the object exists, the SDK aborts the upload before sending any part and throws `409 OBJECT_ALREADY_EXISTS`. The check costs one request from the account's rate limit and needs `blob:read`. If it gets a `429`, the SDK aborts the upload before sending any part and throws that `429`. Any other failure, such as a missing `blob:read`, a `404` or a network error, lets the upload go on, and the service's own check at completion applies. There is no check with `private: true` or `security_hash: true`, because the name gets a random hash and cannot be taken. There is none with an upload token either, because the service ignores `overwrite` for token uploads and the token decides whether its upload can replace an object.
+  - `STORAGE_UNAVAILABLE` is added to `BlobErrorCode`. It is the `503` the service answers while storage is briefly unreachable, when it refuses object calls in windows of about 10 seconds. Reads and chunked parts retry it within `maxRetries`, which may not outlast the window, since the default 2 retries take under 2 seconds. Other calls get one attempt. When it still fails, try again after about 10 seconds. A chunked upload refused this way when it completes is aborted, so run the whole `put()` again.
+  - `LEGACY_API_KEY` is deprecated in `BlobErrorCode`. The service no longer sends it, and an old API key is refused with `401 ACCESS_DENIED`, like any unknown key. It stays in the union.
+  - The errors the SDK creates itself now say what happened and how to fix it. Code that compares these messages must use the new text.
+    - A path that cannot be opened in Node.js throws `Cannot open the file "<path>". Check that the path exists and that this process can read it.` It used to throw `Cannot open file: <path>`.
+    - A path outside Node.js throws `File paths can only be uploaded in Node.js. Pass a Blob, a File or bytes instead.` It used to throw `File paths need Node.js`.
+    - `s3()` without `@aws-sdk/client-s3` throws a message that says how to install it, or to pass `s3Credentials()` to another S3 client. It used to throw `s3() needs @aws-sdk/client-s3 installed`.
+    - `UNKNOWN_ERROR`, for a response without an error code, has a message that names the HTTP status and the likely cause. Its message used to be the code itself.
+    - The `409 OBJECT_ALREADY_EXISTS` of the early name check says that the upload was aborted before any part was sent, and how to replace the object.
+  - Every public class, method, option, type and field has documentation that says what it does, what it takes, what it returns, which errors it throws and what to do about them. The documentation ships in the type declarations, so the JavaScript files stay about 9 KB (3 KB gzipped).
+  
+  **Fixes**
+  
+  - The README and the documentation said that a chunked upload ignores `overwrite: false` and always replaces the object. The service enforces it at completion with `409 OBJECT_ALREADY_EXISTS`. On that `409`, the SDK aborts the upload and throws it, which frees one of the 32 open-upload slots and discards the parts.
+  - The README said that, without an active plan, `update()` reports `PERMISSION_DENIED` only when an item makes an object public or sets an expiration. Without a plan, only making objects private works, and every other change reports `PERMISSION_DENIED`.
+  - `PutOptions.private` said the default is `false`. When it is omitted, the rule for the prefix decides, and without a rule the object is public. The same holds for `expire` and `cache_control`.
+  - The documentation now says that `copy()` and `move()` without `destination.prefix` put the object at the root, not in the source's folder.
+  - The README now says that the chunked upload starts above exactly 90 MiB and uses 16 MiB parts, while the service accepts up to 32 MiB. It also says that `copy()` takes `move`, and that `Cannot open the file` only happens in Node.js. A browser page with a Content Security Policy must allow `https://blob.squarecloud.app` in `connect-src`.
+  - The README and the `downloadUrl()` documentation used to say that temporary download links cannot be revoked. They now say that these links need an active plan, and that they stop working when the API key that created them is revoked, regenerated or expires, when the session that created them logs out, and when the object is overwritten, moved, deleted, or made public or private.
+  - The README documents the permission checks. `copy()` needs `blob:read` on the source, and a prefix-restricted key needs the destination inside its prefixes. `stats()` with a prefix-restricted key is `403 PREFIX_NOT_ALLOWED`. `uploadTokens.create()` can answer `403`. A listing with a key restricted to several prefixes needs a `prefix`, and making a private object public needs `blob:read`.
+  - The README documents the limits on transfers in flight, about 64 at a time per server or 256 on Enterprise. It documents the limits of temporary download links and share links, 300 a minute per link to a public object and 60 to a private one, the rule count per plan, and the cap of 1000 active share links. It says that an S3 `PutObject` is stored as one object with an MD5 `ETag`, gives the S3 endpoint, and no longer lists `LEGACY_API_KEY` for `s3Credentials()`.
+
 ## 4.1.0
 
 ### Minor Changes
